@@ -13,8 +13,6 @@ def lds_inference(p_X, p_U, dynamics, smooth=False):
     U = p_U.expected_value()
     h2 = T.einsum('tia,tba,tbc->tic', U, B, J_22)
     h1 = -T.einsum('tia,tab->tib', h2, A)
-    sess = T.interactive_session()
-    import ipdb; ipdb.set_trace()
 
     potentials = (
         T.matrix_inverse(p_X.get_parameters('regular')[0]),
@@ -30,7 +28,6 @@ def lds_inference(p_X, p_U, dynamics, smooth=False):
         mat_inv = T.einsum('ab,ibc->iac', J_21[t], T.matrix_inverse(J_tt + J_11[t][None]))
         J_t1_t = J_22[t][None] - T.einsum('iab,bc->iac', mat_inv, J_12[t])
         h_t1_t = h2[t] - T.einsum('iab,ib->ib', mat_inv, h_tt + h1[t])
-
         return t + 1, (J_tt, h_tt), (J_t1_t, h_t1_t)
 
     _, filtered, _ = T.scan(kalman_filter, potentials,
