@@ -22,12 +22,13 @@ def lds_inference(p_X, p_U, dynamics, smooth=False):
     batch_size = T.shape(potentials[1])[1]
 
     def kalman_filter(previous, potential):
-        t, prev, _ = previous
+        t, _, prev = previous
         J_tt = prev[0] + potential[0]
         h_tt = prev[1] + potential[1]
         mat_inv = T.einsum('ab,ibc->iac', J_21[t], T.matrix_inverse(J_tt + J_11[t][None]))
         J_t1_t = J_22[t][None] - T.einsum('iab,bc->iac', mat_inv, J_12[t])
         h_t1_t = h2[t] - T.einsum('iab,ib->ib', mat_inv, h_tt + h1[t])
+
         return t + 1, (J_tt, h_tt), (J_t1_t, h_t1_t)
 
     _, filtered, _ = T.scan(kalman_filter, potentials,

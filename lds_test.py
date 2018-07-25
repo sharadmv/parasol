@@ -15,7 +15,7 @@ A = np.tile(np.eye(ds)[None], [H, 1, 1])
 # B = np.tile(np.eye(du)[None], [H, 1, 1])
 B = np.zeros([H, ds, du])
 Q = np.tile(np.eye(ds)[None], [H, 1, 1])
-R = np.eye(ds) * 1e-6
+R = np.eye(ds) * 1e-3
 
 def generate_data(N):
     X = np.zeros([H, N, ds])
