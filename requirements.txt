@@ -1,0 +1,14 @@
+absl-py==0.2.2
+astor==0.7.1
+deepx==0.4.3
+gast==0.2.0
+grpcio==1.13.0
+Markdown==2.6.11
+numpy==1.15.0
+protobuf==3.6.0
+six==1.11.0
+tensorboard==1.9.0
+tensorflow==1.9.0
+termcolor==1.1.0
+websocket-client==0.48.0
+Werkzeug==0.14.1
