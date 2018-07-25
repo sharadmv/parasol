@@ -4,7 +4,7 @@ from deepx import stats, T
 
 from lds import lds_inference
 
-N = 20
+N = 1
 H = 10
 ds = 2
 du = 2
@@ -15,7 +15,7 @@ A = np.tile(np.eye(ds)[None], [H, 1, 1])
 # B = np.tile(np.eye(du)[None], [H, 1, 1])
 B = np.zeros([H, ds, du])
 Q = np.tile(np.eye(ds)[None], [H, 1, 1])
-R = np.eye(ds) * 1e-3
+R = np.eye(ds) * 1e-6
 
 def generate_data(N):
     X = np.zeros([H, N, ds])
@@ -46,8 +46,11 @@ p_U = stats.Gaussian([
     T.to_float(U)
 ])
 
-p_X = lds_inference(p_Y, p_U, tuple(map(T.to_float, (A, B, Q))))
+p_X = lds_inference(p_Y, p_U, tuple(map(T.to_float, (A, B, Q))), smooth=False)
+# p_X_smoothed = lds_inference(p_Y, p_U, tuple(map(T.to_float, (A, B, Q))), smooth=True)
 
 sess = T.interactive_session()
 results = sess.run(p_X.get_parameters('regular'))
+# results_smoothed = sess.run(p_X_smoothed.get_parameters('regular'))
 mean = results[1]
+# mean_s = results_smoothed[1]
