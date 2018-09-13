@@ -1,0 +1,3 @@
+
+class VAE(model):
+  pass
