@@ -1,0 +1,15 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[dev-packages]
+
+[packages]
+gps = {git = "https://github.com/sharadmv/gps.git"}
+tensorflow = "==1.9"
+gym = {version = "*", extras = ["box2d", "mujoco"]}
+parasol = {path = ".", editable = true}
+
+[requires]
+python_version = "3.6"
