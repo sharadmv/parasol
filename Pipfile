@@ -16,6 +16,7 @@ ipdb = "*"
 matplotlib = "*"
 opencv-python = "*"
 tqdm = "*"
+mujoco-py = "*"
 
 [requires]
 python_version = "3.6"

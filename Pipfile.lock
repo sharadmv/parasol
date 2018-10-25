@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "9cfca4a30bbc9245acd54384a98a020b47c6a4e4cfbad0903c84ff96917eb198"
+            "sha256": "7b62df17331b4142173ab2fb1bdd328efff36fd6bd7c001097835da4b16356e0"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -429,7 +429,7 @@
             "hashes": [
                 "sha256:4fc8312bb5547b700d2481e2868f3ee1e3e4afeff87591fa656d261cefe8d286"
             ],
-            "markers": "extra == 'mujoco'",
+            "index": "pypi",
             "version": "==1.50.1.65"
         },
         "nbconvert": {
