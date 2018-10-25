@@ -10,6 +10,12 @@ gps = {git = "https://github.com/sharadmv/gps.git"}
 tensorflow = "==1.9"
 gym = {version = "*", extras = ["box2d", "mujoco"]}
 parasol = {path = ".", editable = true}
+jupyter = "*"
+path-py = "*"
+ipdb = "*"
+matplotlib = "*"
+opencv-python = "*"
+tqdm = "*"
 
 [requires]
 python_version = "3.6"
