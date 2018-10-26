@@ -10,7 +10,7 @@ class ParasolEnvironment(object):
     def __init__(self, sliding_window=0):
         self.recording = False
         self.sliding_window = sliding_window
-        self.prev_obs = [np.zeros(self.state_dim())] * self.sliding_window
+        self.prev_obs = None
 
     @abstractmethod
     def reset(self):
@@ -73,10 +73,11 @@ class ParasolEnvironment(object):
         if self.sliding_window == 0:
             return self._observe()
         curr_obs = self._observe()
+        if self.prev_obs is None:
+            self.prev_obs = [curr_obs] * self.sliding_window
         obs = [curr_obs] + self.prev_obs
         self.prev_obs = obs[:-1]
         return np.concatenate(obs, 0)
-
 
     def rollout(self, num_steps, policy = None, render = False, show_progress = False):
         if policy is None:
