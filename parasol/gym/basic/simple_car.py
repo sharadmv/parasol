@@ -67,7 +67,7 @@ class SimpleCar(ParasolEnvironment):
             self.render()
             frame = (255 - pygame.surfarray.pixels3d(self.screen).max(axis=-1))
             size = self.image_size
-            obs = cv2.resize(frame, (size, size), cv2.INTER_LINEAR)
+            obs = cv2.resize(frame, (size, size), cv2.INTER_LINEAR).T
             return (obs / 255.).flatten()
 
         agent, target = self.curr_state['agent'], self.curr_state['target']
