@@ -39,10 +39,10 @@ class GymWrapper(ParasolEnvironment):
     def get_action_dim(self):
         return list(self.gym_env.action_space.shape)
 
-    def start_recording(self):
+    def start_recording(self, video_path):
         self.video_recorder = VideoRecorder(
             env=self.gym_env,
-            base_path=self.recording[:-4],
+            base_path=video_path[:-4],
             metadata={},
             enabled=True,
         )

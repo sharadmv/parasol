@@ -8,7 +8,7 @@ from contextlib import contextmanager
 class ParasolEnvironment(object):
 
     def __init__(self):
-        self.recording = None
+        self.recording = False
 
     @abstractmethod
     def reset(self):
@@ -24,14 +24,14 @@ class ParasolEnvironment(object):
 
     @contextmanager
     def video(self, video_path):
-        self.recording = video_path
-        self.start_recording()
+        self.recording = True
+        self.start_recording(video_path)
         yield
-        self.recording = None
+        self.recording = False
         self.stop_recording()
 
     @abstractmethod
-    def start_recording(self):
+    def start_recording(self, video_path):
         pass
 
     @abstractmethod
@@ -55,7 +55,7 @@ class ParasolEnvironment(object):
         pass
 
     def is_recording(self):
-        return self.recording is not None
+        return self.recording
 
     def rollout(self, num_steps, policy = None, render = False, show_progress = False):
         if policy is None:
@@ -70,7 +70,7 @@ class ParasolEnvironment(object):
         times = tqdm.trange(num_steps, desc='Rollout') if show_progress else range(num_steps)
         for t in times:
             states[t] = current_state
-            if render:
+            if render or self.is_recording():
                 self.render()
             if self.is_recording():
                 self.grab_frame()

@@ -1,6 +1,8 @@
 from abc import abstractmethod
 
-import pygame
+import contextlib
+with contextlib.redirect_stdout(None):
+    import pygame
 import cv2
 import math
 import numpy as np
@@ -26,7 +28,6 @@ class SimpleCar(ParasolEnvironment):
         self.target_position = None
         self.curr_state = {}
         self._rendered = False
-        self.reset()
 
     def config(self):
         return {
@@ -175,12 +176,12 @@ class SimpleCar(ParasolEnvironment):
         )
         pygame.display.update()
 
-    def start_recording(self):
+    def start_recording(self, video_path):
         frame_shape = (500, 500, 3)
-        self.image_encoder = ImageEncoder(self.recording, frame_shape, 30)
+        self.image_encoder = ImageEncoder(video_path, frame_shape, 30)
 
     def grab_frame(self):
-        frame = pygame.surfarray.pixels3d(self.screen)
+        frame = pygame.surfarray.pixels3d(self.screen).swapaxes(0, 1)
         self.image_encoder.capture_frame(frame)
 
     def stop_recording(self):
