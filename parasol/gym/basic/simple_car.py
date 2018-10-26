@@ -3,18 +3,10 @@ from abc import abstractmethod
 import pygame
 import cv2
 import math
-import matplotlib.animation as manimation
-from matplotlib.patches import Polygon
-import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
-sns.set(style='white')
-
-from scipy.misc import imresize
 
 from ..utils import ImageEncoder
 from ..env import ParasolEnvironment
-
 
 __all__ = ['SimpleCar']
 
