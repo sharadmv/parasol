@@ -18,16 +18,15 @@ class SimpleCar(ParasolEnvironment):
 
     def __init__(self, random_start=False, random_target=False,
                  image=False, image_size=32, sliding_window=0):
-        super(SimpleCar, self).__init__()
         self.random_start = random_start
         self.random_target = random_target
         self.image = image
         self.image_size = image_size
-        self.sliding_window = sliding_window
         self.agent_configuration = None
         self.target_position = None
         self.curr_state = {}
         self._rendered = False
+        super(SimpleCar, self).__init__(sliding_window=sliding_window)
 
     def config(self):
         return {
@@ -46,16 +45,15 @@ class SimpleCar(ParasolEnvironment):
         dist = np.linalg.norm(agent[:2] - target)
         return self.observe(), cost, False, {'dist': dist}
 
-    def get_state_dim(self):
+    def state_dim(self):
         if self.image:
-            w = self.sliding_window + 1
-            return [w * self.image_size ** 2]
-        return [9]
+            return self.image_size ** 2
+        return 9
 
-    def get_action_dim(self):
-        return [2]
+    def action_dim(self):
+        return 2
 
-    def observe(self):
+    def _observe(self):
         if self.image:
             self.render()
             frame = (255 - pygame.surfarray.pixels3d(self.screen).max(axis=-1))

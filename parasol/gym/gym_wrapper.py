@@ -21,23 +21,27 @@ class GymWrapper(ParasolEnvironment):
         self._config = config
         self.gym_env = gym.make(env_name)
         self.state = None
-        super(GymWrapper, self).__init__()
+        super(GymWrapper, self).__init__(config['sliding_window'])
 
     def reset(self):
         self.state = self.gym_env.reset()
-        return self.state
+        return self.observe()
 
     def step(self, action):
-        return self.gym_env.step(action)
+        self.state, reward, done, info = self.gym_env.step(action)
+        return self.observe(), reward, done, info
+
+    def _observe(self):
+        return self.state
 
     def render(self):
         self.gym_env.render()
 
-    def get_state_dim(self):
-        return list(self.gym_env.observation_space.shape)
+    def state_dim(self):
+        return self.gym_env.observation_space.shape[0]
 
-    def get_action_dim(self):
-        return list(self.gym_env.action_space.shape)
+    def action_dim(self):
+        return self.gym_env.action_space.shape[0]
 
     def start_recording(self, video_path):
         self.video_recorder = VideoRecorder(
