@@ -1,3 +1,4 @@
+import tqdm
 import numpy as np
 import six
 from abc import ABCMeta, abstractmethod
@@ -56,7 +57,7 @@ class ParasolEnvironment(object):
     def is_recording(self):
         return self.recording is not None
 
-    def rollout(self, num_steps, policy = None, render = False):
+    def rollout(self, num_steps, policy = None, render = False, show_progress = False):
         if policy is None:
             policy = lambda x, t: np.random.random(size=self.get_action_dim())
         states, actions, costs = (
@@ -66,7 +67,8 @@ class ParasolEnvironment(object):
         )
         infos = []
         current_state = self.reset()
-        for t in range(num_steps):
+        times = tqdm.trange(num_steps, desc='Rollout') if show_progress else range(num_steps)
+        for t in times:
             states[t] = current_state
             if render:
                 self.render()

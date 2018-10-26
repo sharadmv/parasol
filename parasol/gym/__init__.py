@@ -1,6 +1,7 @@
 from .mujoco import Reacher, Pointmass
+from .basic import SimpleCar
 
-ENVS = [Reacher, Pointmass]
+ENVS = [Reacher, Pointmass, SimpleCar]
 
 ENV_MAP = { env.environment_name : env for env in ENVS }
 

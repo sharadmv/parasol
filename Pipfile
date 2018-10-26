@@ -17,6 +17,8 @@ matplotlib = "*"
 opencv-python = "*"
 tqdm = "*"
 mujoco-py = "*"
+seaborn = "*"
+pygame = "*"
 
 [requires]
 python_version = "3.6"
