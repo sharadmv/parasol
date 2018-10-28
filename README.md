@@ -1,5 +1,5 @@
 # Installation
 
 ```bash
-$ pipenv install
+$ pipenv install --ignore-pipfile
 ```
