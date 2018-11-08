@@ -19,6 +19,8 @@ tqdm = "*"
 mujoco-py = "*"
 seaborn = "*"
 pygame = "*"
+sklearn = "*"
+deepx = {path = "./../../hack/deepx", editable = true}
 
 [requires]
 python_version = "3.6"

@@ -33,8 +33,21 @@ class GymPointmass(mujoco_env.MujocoEnv, utils.EzPickle):
     def step(self, a):
         reward, info = self.reward(a)
         done = False
-        self.position += a
+        self.position = self.dynamics(self.position, a)
         return self._get_obs(), reward, done, info
+
+    def dynamics(self, state, action):
+        if self.image:
+            state += action
+            for i in range(len(state)):
+                while not -2.8 <= state[i] <= 2.8:
+                    if state[i] < -2.8:
+                        state[i] = -5.6 - state[i]
+                    if state[i] > 2.8:
+                        state[i] = 5.6 - state[i]
+            return state
+        else:
+            return state + action
 
     def get_start(self):
         if self.random_start:
@@ -64,16 +77,16 @@ class GymPointmass(mujoco_env.MujocoEnv, utils.EzPickle):
 
     def _get_obs(self):
         if self.image:
-            scale = self.image_size // 2
+            scale = self.image_size // 6
             img = np.zeros((self.image_size, self.image_size, 2))
 
             for i, pos in enumerate([self.position, self.goal]):
                 x, y = pos * scale
                 x, y = x + (self.image_size // 2), y + (self.image_size // 2)
                 ind, val = bilinear(x, y)
-                img[..., i][tuple(ind)] = val
-            img[..., 0] = img[..., 0].T[::-1]
-            img[..., 1] = img[..., 1].T[::-1]
+                if img[..., i][tuple(ind)].shape != (2, 2):
+                    continue
+                img[..., i][tuple(ind)] = val.T[::-1]
             return img.flatten()
         else:
             return np.concatenate([
@@ -101,6 +114,7 @@ class Pointmass(GymWrapper):
 
     def __init__(self, **kwargs):
         config = {
+            'sliding_window': kwargs.pop('sliding_window', 0),
             'image': kwargs.pop('image', False),
             'random_target': kwargs.pop('random_target', False),
             'random_start': kwargs.pop('random_start', False),

@@ -6,6 +6,7 @@ ENVS = [Reacher, Pointmass, SimpleCar]
 ENV_MAP = { env.environment_name : env for env in ENVS }
 
 def from_config(env_config):
+    env_config = env_config.copy()
     name = env_config.pop('environment_name')
     return make(name, **env_config)
 

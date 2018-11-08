@@ -1,31 +1,34 @@
+import six
 from abc import abstractmethod, ABCMeta
+from deepx import T
 
-class Model(object, metaclass=ABCMeta):
+@six.add_metaclass(ABCMeta)
+class Model(object):
 
   def __init__(self):
-    pass
+      self.session = T.interactive_session()
 
   @abstractmethod
   def initialize(self, initial_model=None):
-    pass
+      pass
 
   @abstractmethod
   def train(self, data):
-    pass
+      pass
 
   @abstractmethod
   def encode(self, y, a):
-    pass
+      pass
 
   @abstractmethod
   def decode(self, x):
-    pass
+      pass
 
   @abstractmethod
   def get_dynamics(self):
-    pass
+      pass
 
   @property
   @abstractmethod
   def has_dynamics(self):
-    pass
+      pass
