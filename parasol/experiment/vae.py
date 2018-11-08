@@ -129,7 +129,9 @@ class TrainVAE(Experiment):
 
         def policy(x, _):
             return np.random.multivariate_normal(mean=np.zeros(env.get_action_dim()), cov=np.eye(env.get_action_dim()) * self.policy_variance)
-        S = np.stack([env.rollout(self.horizon, policy=policy, show_progress=True)[0] for _ in range(self.num_rollouts)])
+        S = []
+        for i in tqdm.trange(self.num_rollouts, desc="Data"):
+            S.append(env.rollout(self.horizon, policy=policy)[0])
         S = S.reshape([-1, env.get_state_dim()])
 
         beta = self.beta_start
