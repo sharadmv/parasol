@@ -1,3 +1,4 @@
+import os
 from abc import abstractmethod
 
 import contextlib
@@ -108,7 +109,12 @@ class SimpleCar(ParasolEnvironment):
         agent, target = self.curr_state['agent'], self.curr_state['target']
         if not self._rendered:
             pygame.init()
-            self.screen = pygame.display.set_mode((500,500))
+            try:
+                pygame.display.init()
+            except:
+                os.putenv('SDL_VIDEODRIVER', 'dummy')
+                pygame.display.init()
+            self.screen = pygame.display.set_mode((500, 500), 0, 24)
             self.screen.fill((255, 255, 255))
 
         x, y, theta, v, phi = agent
