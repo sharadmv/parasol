@@ -104,7 +104,7 @@ class SimpleCar(ParasolEnvironment):
             self.curr_state['target'] = np.array([-2.0, 2.0])
         return self.observe()
 
-    def render(self):
+    def render(self, mode='human'):
         agent, target = self.curr_state['agent'], self.curr_state['target']
         if not self._rendered:
             pygame.init()

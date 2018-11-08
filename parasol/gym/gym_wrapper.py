@@ -34,8 +34,8 @@ class GymWrapper(ParasolEnvironment):
     def _observe(self):
         return self.state
 
-    def render(self):
-        self.gym_env.render()
+    def render(self, mode='human'):
+        self.gym_env.render(mode='rgb_array')
 
     def state_dim(self):
         return self.gym_env.observation_space.shape[0]

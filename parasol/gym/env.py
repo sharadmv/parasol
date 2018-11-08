@@ -21,7 +21,7 @@ class ParasolEnvironment(object):
         pass
 
     @abstractmethod
-    def render(self):
+    def render(self, mode='human'):
         pass
 
     @contextmanager
@@ -92,9 +92,10 @@ class ParasolEnvironment(object):
         times = tqdm.trange(num_steps, desc='Rollout') if show_progress else range(num_steps)
         for t in times:
             states[t] = current_state
-            if render or self.is_recording():
+            if render:
                 self.render()
             if self.is_recording():
+                self.render(mode='rgb_array')
                 self.grab_frame()
             actions[t] = policy(states[t], t)
             current_state, costs[t], done, info = self.step(actions[t])
