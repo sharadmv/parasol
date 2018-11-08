@@ -31,7 +31,7 @@ class Experiment(object):
                 gfile.MakeDirs(self.out_dir / "tb")
             if not gfile.Exists(self.out_dir / "weights"):
                 gfile.MakeDirs(self.out_dir / "weights")
-            with gfile.GFile(self.out_dir / ("{experiment_name}.json".format(experiment_name=self.experiment_name)), 'w') as fp:
+            with gfile.GFile(self.out_dir / ("params.json".format(experiment_name=self.experiment_name)), 'w') as fp:
                 fp.write(self.to_json())
             self.run_experiment(self.out_dir)
 
