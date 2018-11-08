@@ -132,7 +132,7 @@ class TrainVAE(Experiment):
         S = []
         for i in tqdm.trange(self.num_rollouts, desc="Data"):
             S.append(env.rollout(self.horizon, policy=policy)[0])
-        S = S.reshape([-1, env.get_state_dim()])
+        S = np.stack(S).reshape([-1, env.get_state_dim()])
 
         beta = self.beta_start
         N = S.shape[0]
