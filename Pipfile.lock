@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "5cecdd3238ae53155bd4d6346d3cfef11c8bcf6ae20797fb66641ed466d6127d"
+            "sha256": "a5bace2528bf70182d0140bd6cae96169335c33045bda6422ecbc4a495c677bd"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -152,8 +152,11 @@
             "version": "==4.3.0"
         },
         "deepx": {
-            "editable": true,
-            "path": "./../../hack/deepx"
+            "hashes": [
+                "sha256:5ab30b3bd4eb47746755a8927bd7c6825c90d46856fc2676b7db96d3f6ce27ba"
+            ],
+            "index": "pypi",
+            "version": "==0.4.4"
         },
         "defusedxml": {
             "hashes": [

@@ -20,7 +20,7 @@ mujoco-py = "*"
 seaborn = "*"
 pygame = "*"
 sklearn = "*"
-deepx = {path = "./../../hack/deepx", editable = true}
+deepx = "*"
 
 [requires]
 python_version = "3.6"
