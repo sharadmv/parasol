@@ -1,10 +1,15 @@
+from path import Path
+import pickle
 import random
 import tqdm
 import numpy as np
 from deepx import T, stats
 import json
 import parasol.gym as gym
+from tensorflow import gfile
+
 from .common import Experiment
+
 
 class TrainVAE(Experiment):
 
@@ -22,6 +27,7 @@ class TrainVAE(Experiment):
                  num_epochs=100,
                  learning_rate=1e-4,
                  batch_size=20,
+                 dump_every=None,
                  beta_start=0.0, beta_rate=1e-4,
                  beta_end=1.0, **kwargs):
         super(TrainVAE, self).__init__(experiment_name, **kwargs)
@@ -29,11 +35,13 @@ class TrainVAE(Experiment):
         self.seed = seed
         self.encoder = encoder
         self.decoder = decoder
+        self.architecture = pickle.dumps((self.encoder, self.decoder))
         self.observation_dimension = observation_dimension
         self.latent_dimension = latent_dimension
         self.policy_variance = policy_variance
         self.num_rollouts = num_rollouts
         self.num_epochs = num_epochs
+        self.dump_every = dump_every
         self.horizon = horizon
         self.learning_rate = learning_rate
         self.batch_size = batch_size
@@ -83,6 +91,7 @@ class TrainVAE(Experiment):
             },
             "train": {
                 "num_epochs": self.num_epochs,
+                "dump_every": self.dump_every,
                 "learning_rate": self.learning_rate,
                 "beta_start": self.beta_start,
                 "beta_rate": self.beta_rate,
@@ -109,6 +118,7 @@ class TrainVAE(Experiment):
             beta_rate=params['train']['beta_rate'],
             beta_end=params['train']['beta_end'],
             batch_size=params['train']['batch_size'],
+            dump_every=params['train']['dump_every'],
             num_rollouts=params['data']['num_rollouts'],
             horizon=params['data']['horizon'],
             policy_variance=params['data']['policy_variance'],
@@ -120,7 +130,13 @@ class TrainVAE(Experiment):
         params['architecture']['state_decoder'] = str(self.decoder)
         return json.dumps(params)
 
+    def dump_weights(self, sess, epoch, out_dir):
+        with gfile.GFile(out_dir / "weights" / ("model-%s.pkl" % epoch), 'wb') as fp:
+            weights = sess.run((self.encoder.get_parameters(), self.decoder.get_parameters()))
+            pickle.dump((self.architecture, weights), fp)
+
     def run_experiment(self, out_dir):
+        out_dir = Path(out_dir)
         T.core.set_random_seed(self.seed)
         np.random.seed(self.seed)
         random.seed(self.seed)
@@ -140,6 +156,8 @@ class TrainVAE(Experiment):
         global_iter = 0
         with T.session() as sess:
             for epoch in tqdm.trange(self.num_epochs, desc='Experiment'):
+                if self.dump_every is not None and epoch % self.dump_every == 0:
+                    self.dump_weights(sess, epoch, out_dir)
                 permutation = np.random.permutation(N)
 
                 for i in tqdm.trange(0, N, self.batch_size, desc="Epoch %u" % (epoch + 1)):
@@ -158,3 +176,4 @@ class TrainVAE(Experiment):
                         })
                     global_iter += 1
                     beta = min(self.beta_end, beta + self.beta_rate)
+            self.dump_weights(sess, "final", out_dir)
