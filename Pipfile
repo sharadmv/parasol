@@ -22,6 +22,7 @@ pygame = "*"
 sklearn = "*"
 notebook = ">=5.7.2"
 deepx = {path = "./../../hack/deepx", editable = true}
+kfac = "*"
 
 [requires]
 python_version = "3.6"

@@ -79,9 +79,9 @@ class ParasolEnvironment(object):
         self.prev_obs = obs[:-1]
         return np.concatenate(obs, 0)
 
-    def rollout(self, num_steps, policy = None, render = False, show_progress = False):
+    def rollout(self, num_steps, policy = None, render = False, show_progress = False, init_std=1):
         if policy is None:
-            policy = lambda x, t: np.random.random(size=self.get_action_dim())
+            policy = lambda x, t: np.random.normal(size=self.get_action_dim(), scale=init_std)
         states, actions, costs = (
             np.empty([num_steps] + [self.get_state_dim()]),
             np.empty([num_steps] + [self.get_action_dim()]),
