@@ -1,5 +1,7 @@
-from .mujoco import Reacher, Pointmass
-from .basic import SimpleCar
+import contextlib
+with contextlib.redirect_stdout(None):
+    from .mujoco import Reacher, Pointmass
+    from .basic import SimpleCar
 
 ENVS = [Reacher, Pointmass, SimpleCar]
 

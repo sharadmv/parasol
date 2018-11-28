@@ -93,13 +93,25 @@ class ParasolEnvironment(object):
         for t in times:
             states[t] = current_state
             if render:
-                self.render()
+                self.render(mode='human')
             if self.is_recording():
                 self.render(mode='rgb_array')
                 self.grab_frame()
             actions[t] = policy(states[t], t)
             current_state, costs[t], done, info = self.step(actions[t])
             infos.append(info)
+        return states, actions, costs, infos
+
+    def rollouts(self, num_rollouts, num_steps, show_progress=False, **kwargs):
+        states, actions, costs = (
+            np.empty([num_rollouts, num_steps] + [self.get_state_dim()]),
+            np.empty([num_rollouts, num_steps] + [self.get_action_dim()]),
+            np.empty([num_rollouts, num_steps])
+        )
+        infos = [None] * num_rollouts
+        rollouts = tqdm.trange(num_rollouts, desc='Rollouts') if show_progress else range(num_rollouts)
+        for i in rollouts:
+            states[i], actions[i], costs[i], infos[i] = self.rollout(num_steps, **kwargs)
         return states, actions, costs, infos
 
     def get_config(self):

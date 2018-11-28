@@ -10,7 +10,6 @@ from tensorflow import gfile
 
 from .common import Experiment
 
-
 class TrainVAE(Experiment):
 
     experiment_type = "train_vae"

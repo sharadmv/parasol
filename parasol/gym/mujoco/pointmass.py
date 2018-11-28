@@ -116,8 +116,8 @@ class Pointmass(GymWrapper):
         config = {
             'sliding_window': kwargs.pop('sliding_window', 0),
             'image': kwargs.pop('image', False),
-            'random_target': kwargs.pop('random_target', False),
-            'random_start': kwargs.pop('random_start', False),
+            'random_target': kwargs.pop('random_target', True),
+            'random_start': kwargs.pop('random_start', True),
             'default_goal': kwargs.pop('default_goal', [-0.1, -0.1]),
             'image_size': kwargs.pop('image_size', 32),
         }
