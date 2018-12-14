@@ -1,3 +1,4 @@
+import pickle
 import numpy as np
 from deepx import T, stats, nn
 
@@ -10,6 +11,7 @@ class NNDS(Dynamics):
     def __init__(self, ds, da, horizon, network=None):
         super(NNDS, self).__init__(ds, da, horizon)
         assert network is not None, 'Must specify network'
+        self.architecture = pickle.dumps(network)
         self.network = network
         self.cache = {}
 
@@ -31,6 +33,18 @@ class NNDS(Dynamics):
 
     def get_dynamics(self):
         raise NotImplementedError
+
+    def __getstate__(self):
+        state = super(NNDS, self).__getstate__()
+        state['architecture'] = self.architecture
+        state['weights'] = T.get_current_session().run(self.get_parameters())
+        return state
+
+    def __setstate__(self, state):
+        network = pickle.loads(state.pop('architecture'))
+        weights = state.pop('weights')
+        self.__init__(state['ds'], state['da'], network=network)
+        T.get_current_session().run([T.core.assign(a, b) for a, b in zip(self.get_parameters(), weights)])
 
     def get_parameters(self):
         return self.network.get_parameters()

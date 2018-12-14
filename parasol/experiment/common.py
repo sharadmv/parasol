@@ -1,26 +1,26 @@
 import six
-import json
 from path import Path
 from abc import ABCMeta, abstractmethod
 
 import tensorflow.gfile as gfile
 
+from parasol.util import json
+from parasol.experiment.remote import run_remote
+
 @six.add_metaclass(ABCMeta)
 class Experiment(object):
 
-    def __init__(self, experiment_name, out_dir='s3://parasol-experiments/'):
+    def __init__(self, experiment_name, out_dir='out/'):
         self.experiment_name = experiment_name
         self.out_dir = Path(out_dir) / self.experiment_name
-
-    def to_json(self):
-        return json.dumps(self.to_dict())
 
     @abstractmethod
     def to_dict(self):
         pass
 
+    @classmethod
     @abstractmethod
-    def from_dict(self):
+    def from_dict(cls, params):
         pass
 
     def run(self, remote=False, gpu=False):
@@ -32,8 +32,13 @@ class Experiment(object):
             if not gfile.Exists(self.out_dir / "weights"):
                 gfile.MakeDirs(self.out_dir / "weights")
             with gfile.GFile(self.out_dir / ("params.json".format(experiment_name=self.experiment_name)), 'w') as fp:
-                fp.write(self.to_json())
+                json.dump(self, fp)
             self.run_experiment(self.out_dir)
+        else:
+            assert self.out_dir[:5] == "s3://", "Must be dumping to s3"
+            with gfile.GFile(self.out_dir / "params.json", 'w') as fp:
+                json.dump(self, fp)
+            return run_remote(self.out_dir / "params.json")
         return self
 
     @abstractmethod
@@ -45,6 +50,3 @@ class Experiment(object):
 
     def __setstate__(self, state):
         self.__dict__.update(self.from_dict(state).__dict__)
-
-    def __eq__(self, other):
-        return self.to_json() == other.to_json()

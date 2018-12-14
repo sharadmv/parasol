@@ -27,6 +27,16 @@ class Prior(object):
     def has_dynamics(self):
         pass
 
+    def __getstate__(self):
+        return {
+            'ds': self.ds,
+            'da': self.da,
+            'horizon': self.horizon,
+        }
+
+    def __setstate__(self, state):
+        self.__init__(state['ds'], state['da'], state['horizon'])
+
 class Dynamics(Prior):
 
     @abstractmethod

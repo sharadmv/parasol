@@ -5,19 +5,19 @@ import tqdm
 import numpy as np
 import deepx
 from deepx import T, stats
-import json
 import parasol.gym as gym
 import parasol.util as util
 from tensorflow import gfile
 
 from .common import Experiment
-from parasol.prior import Normal, NNDS, LDS, BayesianLDS
+from parasol.prior import Normal, NNDS, LDS, BayesianLDS, NoPrior
 
 PRIOR_MAP = {
     'nnds': NNDS,
     'normal': Normal,
     'lds': LDS,
     'blds': BayesianLDS,
+    'none': NoPrior,
 }
 
 class TrainVAE(Experiment):
@@ -52,7 +52,7 @@ class TrainVAE(Experiment):
         self.state_decoder = state_decoder
         self.action_encoder = action_encoder
         self.action_decoder = action_decoder
-        self.architecture = pickle.dumps((self.state_encoder, self.state_decoder, self.action_encoder, self.action_decoder))
+        self.architecture = (state_encoder, state_decoder, action_encoder, action_decoder)
 
         self.do, self.ds = do, ds
         self.du, self.da = du, da
@@ -73,7 +73,9 @@ class TrainVAE(Experiment):
 
         self.env = gym.from_config(self.env_params)
 
-        self.initialize_objective()
+        self.graph = T.core.Graph()
+        with self.graph.as_default():
+            self.initialize_objective()
 
     def initialize_objective(self):
         self.O = T.placeholder(T.floatx(), [None, None, self.do])
@@ -88,12 +90,11 @@ class TrainVAE(Experiment):
         q_U = util.map_network(self.action_decoder)(q_A.sample()[0])
 
         if self.prior_params is None:
-            self.prior = None
-            prior_kl, kl_grads = T.zeros(batch_size), []
-        else:
-            prior_type = self.prior_params.pop('prior_type')
-            self.prior = PRIOR_MAP[prior_type](self.ds, self.da, self.horizon, **self.prior_params)
-            prior_kl, kl_grads = self.prior.kl_and_grads(q_S, q_A, self.num_data)
+            self.prior_params = {'prior_type': 'none'}
+        prior_params = self.prior_params.copy()
+        prior_type = prior_params.pop('prior_type')
+        self.prior = PRIOR_MAP[prior_type](self.ds, self.da, self.horizon, **prior_params)
+        prior_kl, kl_grads = self.prior.kl_and_grads(q_S, q_A, self.num_data)
 
         log_likelihood = T.sum(q_O.log_likelihood(self.O), axis=1)
 
@@ -131,6 +132,7 @@ class TrainVAE(Experiment):
     def to_dict(self):
         return {
             "seed": self.seed,
+            "out_dir": self.out_dir,
             "environment": self.env_params,
             "experiment_name": self.experiment_name,
             "experiment_type": self.experiment_type,
@@ -162,10 +164,10 @@ class TrainVAE(Experiment):
             "da": self.da,
         }
 
-    def from_dict(self, params):
+    @classmethod
+    def from_dict(cls, params):
         return TrainVAE(
             params['experiment_name'],
-            params['experiment_type'],
             params['environment'],
             params['architecture']['state_encoder'],
             params['architecture']['state_decoder'],
@@ -176,6 +178,7 @@ class TrainVAE(Experiment):
             params['du'],
             params['da'],
             seed=params['seed'],
+            prior=params['prior'],
             num_epochs=params['train']['num_epochs'],
             learning_rate=params['train']['learning_rate'],
             beta_start=params['train']['beta_start'],
@@ -185,28 +188,21 @@ class TrainVAE(Experiment):
             summary_every=params['train']['summary_every'],
             dump_every=params['train']['dump_every'],
             num_rollouts=params['data']['num_rollouts'],
+            out_dir=params['out_dir'],
             horizon=params['data']['horizon'],
             policy_variance=params['data']['policy_variance'],
         )
 
-    def to_json(self):
-        params = self.to_dict()
-        def process(d):
-            for k, v in d.items():
-                if isinstance(v, dict):
-                    process(v)
-                elif isinstance(v, deepx.core.Node):
-                    d[k] = str(v)
-        process(params)
-        return json.dumps(params)
-
     def dump_weights(self, sess, epoch, out_dir):
-        with gfile.GFile(out_dir / "weights" / ("model-%s.pkl" % epoch), 'wb') as fp:
+        with gfile.GFile(out_dir / "weights" / ("network-%s.pkl" % epoch), 'wb') as fp:
             weights = sess.run((self.state_encoder.get_parameters(), self.state_decoder.get_parameters(), self.action_encoder.get_parameters(), self.action_decoder.get_parameters()))
             pickle.dump((self.architecture, weights), fp)
+        with gfile.GFile(out_dir / "weights" / ("prior-%s.pkl" % epoch), 'wb') as fp:
+            pickle.dump(self.prior, fp)
 
     def run_experiment(self, out_dir):
         out_dir = Path(out_dir)
+
         T.core.set_random_seed(self.seed)
         np.random.seed(self.seed)
         random.seed(self.seed)
@@ -222,7 +218,7 @@ class TrainVAE(Experiment):
         N = O.shape[0]
         writer = T.core.summary.FileWriter(out_dir / "tb")
         global_iter = 0
-        with T.session() as sess:
+        with T.session(graph=self.graph) as sess:
             for epoch in tqdm.trange(self.num_epochs, desc='Experiment'):
                 if self.dump_every is not None and epoch % self.dump_every == 0:
                     self.dump_weights(sess, epoch, out_dir)

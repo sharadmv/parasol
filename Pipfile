@@ -21,8 +21,10 @@ seaborn = "*"
 pygame = "*"
 sklearn = "*"
 notebook = ">=5.7.2"
-deepx = {path = "./../../hack/deepx", editable = true}
+deepx = "==0.4.7"
 kfac = "*"
+fabric = "*"
+"boto3" = "*"
 
 [requires]
 python_version = "3.6"

@@ -47,6 +47,18 @@ class LDS(Dynamics):
     def get_parameters(self):
         return [self.A, self.Q_log_diag]
 
+    def __getstate__(self):
+        state = super(LDS, self).__getstate__()
+        state['time_varying'] = self.time_varying
+        state['weights'] = T.get_current_session().run(self.get_parameters())
+        return state
+
+    def __setstate__(self, state):
+        time_varying = state.pop('time_varying')
+        weights = state.pop('weights')
+        self.__init__(state['ds'], state['da'], state['horizon'], time_varying=time_varying)
+        T.get_current_session().run([T.core.assign(a, b) for a, b in zip(self.get_parameters(), weights)])
+
     def get_statistics(self, q_Xt, q_At, q_Xt1):
         Xt1_Xt1T, Xt1 = stats.Gaussian.unpack(q_Xt1.expected_sufficient_statistics())
 

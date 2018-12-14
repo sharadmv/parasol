@@ -40,6 +40,18 @@ class BayesianLDS(LDS):
                 T.tile(Q[None], [self.horizon - 1, 1, 1]),
             )
 
+    def __getstate__(self):
+        state = super(BayesianLDS, self).__getstate__()
+        state['time_varying'] = self.time_varying
+        state['weights'] = T.get_current_session().run(self.get_parameters())
+        return state
+
+    def __setstate__(self, state):
+        time_varying = state.pop('time_varying')
+        weights = state.pop('weights')
+        self.__init__(state['ds'], state['da'], state['horizon'], time_varying=time_varying)
+        T.get_current_session().run([T.core.assign(a, b) for a, b in zip(self.get_parameters(), weights)])
+
     def get_parameters(self):
         return self.A_variational.get_parameters('natural')
 

@@ -1,5 +1,6 @@
 from deepx import nn
-from parasol.experiment import TrainVAE
+from parasol.util import json
+from parasol.experiment import TrainVAE, from_json
 import parasol.gym as gym
 
 env_params = {
@@ -31,14 +32,14 @@ experiment = TrainVAE(
     nn.IdentityVariance(),
     do, ds,
     du, da,
-    prior={'prior_type': 'lds'},
-    # prior={'prior_type': 'nnds', 'network': nn.Relu(ds + da, 200) >> nn.Relu(200) >> nn.Gaussian(ds)},
+    # prior={'prior_type': 'lds'},
+    prior={'prior_type': 'nnds', 'network': nn.Relu(ds + da, 200) >> nn.Relu(200) >> nn.Gaussian(ds)},
     # prior=None,
     num_epochs=1000,
     num_rollouts=100,
     learning_rate=1e-4,
-    out_dir='temp2/',
+    out_dir='s3://parasol-experiments/test/',
     batch_size=2,
     summary_every=10
 )
-experiment.run()
+print(experiment.run(remote=True))
