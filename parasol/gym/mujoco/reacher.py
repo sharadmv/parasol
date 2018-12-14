@@ -20,6 +20,14 @@ class GymReacher(mujoco_env.MujocoEnv, utils.EzPickle):
         assets_dir = os.path.join(os.path.dirname(__file__), "assets", "reacher.xml")
         mujoco_env.MujocoEnv.__init__(self, assets_dir, 2)
 
+    def is_image(self):
+        return self.image
+
+    def image_size(self):
+        if self.image:
+            return [self.image_size, self.image_size, 3]
+        return None
+
     def reward(self, x, a):
         reward_dist = - np.sum(np.square(x))
         reward_ctrl = - np.square(a).sum() * 0.05

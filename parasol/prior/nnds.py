@@ -1,5 +1,5 @@
 import numpy as np
-from deepx import T, stats
+from deepx import T, stats, nn
 
 from .common import Dynamics
 
@@ -7,7 +7,9 @@ __all__ = ['NNDS']
 
 class NNDS(Dynamics):
 
-    def __init__(self, network):
+    def __init__(self, ds, da, horizon, network=None):
+        super(NNDS, self).__init__(ds, da, horizon)
+        assert network is not None, 'Must specify network'
         self.network = network
         self.cache = {}
 
@@ -27,10 +29,11 @@ class NNDS(Dynamics):
         else:
             raise Exception()
 
-    def kl_gradients(self, q_Xt, q_At, _):
-        kl = self.kl_divergence(q_Xt, q_At, _)
-        params = self.network.get_parameters()
-        return list(zip(params, T.grad(kl, params)))
+    def get_dynamics(self):
+        raise NotImplementedError
+
+    def get_parameters(self):
+        return self.network.get_parameters()
 
     def kl_divergence(self, q_X, q_A, _):
         # q_Xt - [N, H, ds]
@@ -49,5 +52,5 @@ class NNDS(Dynamics):
                 q_X.get_parameters('regular')[0][:, 1:],
                 q_X.get_parameters('regular')[1][:, 1:],
             ])
-            self.cache[(q_X, q_A)] = stats.kl_divergence(q_Xt1, p_Xt1)
+            self.cache[(q_X, q_A)] = T.sum(stats.kl_divergence(q_Xt1, p_Xt1), axis=-1)
         return self.cache[(q_X, q_A)]

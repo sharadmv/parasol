@@ -18,11 +18,11 @@ class SimpleCar(ParasolEnvironment):
     environment_name = 'SimpleCar'
 
     def __init__(self, random_start=False, random_target=False,
-                 image=False, image_size=32, sliding_window=0):
+                 image=False, image_dim=32, sliding_window=0):
         self.random_start = random_start
         self.random_target = random_target
         self.image = image
-        self.image_size = image_size
+        self.image_dim = image_dim
         self.agent_configuration = None
         self.target_position = None
         self.curr_state = {}
@@ -34,9 +34,15 @@ class SimpleCar(ParasolEnvironment):
             'random_start': self.random_start,
             'random_target': self.random_target,
             'image': self.image,
-            'image_size': self.image_size,
+            'image_dim': self.image_dim,
             'sliding_window': self.sliding_window
         }
+
+    def is_image(self):
+        return self.image
+
+    def image_size(self):
+        return [self.image_dim, self.image_dim, 1]
 
     def step(self, action):
         action = np.array(action)
@@ -48,7 +54,7 @@ class SimpleCar(ParasolEnvironment):
 
     def state_dim(self):
         if self.image:
-            return self.image_size ** 2
+            return self.image_dim ** 2
         return 9
 
     def action_dim(self):
@@ -58,7 +64,7 @@ class SimpleCar(ParasolEnvironment):
         if self.image:
             self.render()
             frame = (255 - pygame.surfarray.pixels3d(self.screen).max(axis=-1))
-            size = self.image_size
+            size = self.image_dim
             obs = cv2.resize(frame, (size, size), cv2.INTER_LINEAR).T
             return (obs / 255.).flatten()
 
@@ -96,7 +102,7 @@ class SimpleCar(ParasolEnvironment):
             theta = np.random.uniform(-np.pi, np.pi)
         else:
             x, y = np.array([1.5, -1.5]) + 0.1 * np.random.randn(2)
-            size = self.image_size
+            size = self.image_dim
             theta = np.pi / 2.0 + 0.1 * np.random.randn(1)
         self.curr_state['agent'] = np.array([x, y, theta, 0.0, 0.0])
         if self.random_target:

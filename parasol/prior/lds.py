@@ -7,9 +7,8 @@ __all__ = ['LDS']
 
 class LDS(Dynamics):
 
-    def __init__(self, state_dim, action_dim, horizon=50, time_varying=False):
-        self.ds, self.da = state_dim, action_dim
-        self.horizon = horizon
+    def __init__(self, ds, da, horizon, time_varying=False):
+        super(LDS, self).__init__(ds, da, horizon)
         self.time_varying = time_varying
         self.cache = {}
         self.initialize_objective()
@@ -18,11 +17,11 @@ class LDS(Dynamics):
         H, ds, da = self.horizon, self.ds, self.da
         if self.time_varying:
             self.A = T.variable(T.random_normal([H - 1, ds, ds + da]))
-            self.Q_log_diag = T.variable(T.random_normal([H - 1, ds]))
+            self.Q_log_diag = T.variable(T.random_normal([H - 1, ds]) - 3)
             self.Q = T.matrix_diag(T.exp(self.Q_log_diag))
         else:
             self.A = T.variable(T.random_normal([ds, ds + da]))
-            self.Q_log_diag = T.variable(T.random_normal([ds]))
+            self.Q_log_diag = T.variable(T.random_normal([ds]) - 3)
             self.Q = T.matrix_diag(T.exp(self.Q_log_diag))
 
     def forward(self, q_Xt, q_At):
@@ -45,10 +44,8 @@ class LDS(Dynamics):
                 T.tile(self.Q[None], [self.horizon - 1, 1, 1])
             )
 
-
-    def kl_gradients(self, q_X, q_A, _):
-        params = [self.A, self.Q_log_diag]
-        return list(zip(params, T.grad(self.kl_divergence(q_X, q_A, _), params)))
+    def get_parameters(self):
+        return [self.A, self.Q_log_diag]
 
     def get_statistics(self, q_Xt, q_At, q_Xt1):
         Xt1_Xt1T, Xt1 = stats.Gaussian.unpack(q_Xt1.expected_sufficient_statistics())
@@ -80,5 +77,5 @@ class LDS(Dynamics):
                 q_X.get_parameters('regular')[0][:, 1:],
                 q_X.get_parameters('regular')[1][:, 1:],
             ])
-            self.cache[(q_X, q_A)] = T.mean(stats.kl_divergence(q_Xt1, p_Xt1), axis=-1)
+            self.cache[(q_X, q_A)] = T.sum(stats.kl_divergence(q_Xt1, p_Xt1), axis=-1)
         return self.cache[(q_X, q_A)]

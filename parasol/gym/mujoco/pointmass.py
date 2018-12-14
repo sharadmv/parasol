@@ -77,12 +77,12 @@ class GymPointmass(mujoco_env.MujocoEnv, utils.EzPickle):
 
     def _get_obs(self):
         if self.image:
-            scale = self.image_size // 6
-            img = np.zeros((self.image_size, self.image_size, 2))
+            scale = self.image_dim // 6
+            img = np.zeros((self.image_dim, self.image_dim, 2))
 
             for i, pos in enumerate([self.position, self.goal]):
                 x, y = pos * scale
-                x, y = x + (self.image_size // 2), y + (self.image_size // 2)
+                x, y = x + (self.image_dim // 2), y + (self.image_dim // 2)
                 ind, val = bilinear(x, y)
                 if img[..., i][tuple(ind)].shape != (2, 2):
                     continue
@@ -119,6 +119,13 @@ class Pointmass(GymWrapper):
             'random_target': kwargs.pop('random_target', True),
             'random_start': kwargs.pop('random_start', True),
             'default_goal': kwargs.pop('default_goal', [-0.1, -0.1]),
-            'image_size': kwargs.pop('image_size', 32),
+            'image_dim': kwargs.pop('image_dim', 32),
         }
         super(Pointmass, self).__init__(config)
+
+    def has_image(self):
+        return self.image
+
+    def image_size(self):
+        return [self.image_dim, self.image_dim, 2]
+

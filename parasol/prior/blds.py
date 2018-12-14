@@ -40,7 +40,11 @@ class BayesianLDS(LDS):
                 T.tile(Q[None], [self.horizon - 1, 1, 1]),
             )
 
-    def kl_gradients(self, q_X, q_A, num_data):
+    def get_parameters(self):
+        return self.A_variational.get_parameters('natural')
+
+    def kl_and_grads(self, q_X, q_A, num_data):
+        kl = self.kl_divergence(q_X, q_A, num_data)
         q_Xt = stats.Gaussian([
             q_X.get_parameters('regular')[0][:, :-1],
             q_X.get_parameters('regular')[1][:, :-1],
@@ -56,8 +60,8 @@ class BayesianLDS(LDS):
         ])
         (XtAt_XtAtT, XtAt), (Xt1_Xt1T, Xt1) = self.get_statistics(q_Xt, q_At, q_Xt1)
         batch_size = T.shape(XtAt)[0]
-        num_batches = T.to_float(num_data / batch_size)
-        return [(c, -(a + num_batches * b - c)) for a, b, c in zip(
+        num_batches = T.to_float(num_data) / T.to_float(batch_size)
+        return kl, [(c, -(a + num_batches * b - c)) for a, b, c in zip(
             self.A_prior.get_parameters('natural'),
             [
                 T.sum(Xt1_Xt1T, [0, 1]),

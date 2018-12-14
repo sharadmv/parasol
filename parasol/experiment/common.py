@@ -34,6 +34,7 @@ class Experiment(object):
             with gfile.GFile(self.out_dir / ("params.json".format(experiment_name=self.experiment_name)), 'w') as fp:
                 fp.write(self.to_json())
             self.run_experiment(self.out_dir)
+        return self
 
     @abstractmethod
     def run_experiment(self, out_dir):

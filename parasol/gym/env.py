@@ -65,6 +65,12 @@ class ParasolEnvironment(object):
     def is_recording(self):
         return self.recording
 
+    def is_image(self):
+        return False
+
+    def image_size(self):
+        return None
+
     @abstractmethod
     def _observe(self):
         pass
