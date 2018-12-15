@@ -16,7 +16,7 @@ ds = 9
 du = da = env.get_action_dim()
 
 experiment = TrainVAE(
-    "test-bigger-nnds",
+    "test-lds",
     env_params,
     (nn.Reshape(do, [32, 32, 1])
     >> nn.Convolution([3, 3, 32]) >> nn.Relu()
@@ -32,14 +32,17 @@ experiment = TrainVAE(
     nn.IdentityVariance(),
     do, ds,
     du, da,
-    # prior={'prior_type': 'lds'},
-    prior={'prior_type': 'nnds', 'network': nn.Relu(ds + da, 200) >> nn.Relu(200) >> nn.Gaussian(ds)},
+    prior={'prior_type': 'lds'},
+    # prior={'prior_type': 'nnds', 'network': nn.Relu(ds + da, 200) >> nn.Relu(200) >> nn.Gaussian(ds)},
     # prior=None,
     num_epochs=1000,
     num_rollouts=100,
     learning_rate=1e-4,
-    out_dir='s3://parasol-experiments/test/',
+    horizon=50,
+    # out_dir='s3://parasol-experiments/test/',
+    out_dir='temp2/test',
     batch_size=2,
-    summary_every=10
+    dump_every=50,
+    summary_every=50 / 2,
 )
-print(experiment.run(remote=True))
+experiment.run(remote=False)
