@@ -2,12 +2,13 @@ import tensorflow as tf
 from parasol.util import json
 from .common import Experiment
 from .vae import TrainVAE
+from .solar import Solar
 
 gfile = tf.gfile
 
-__all__ = ['Experiment', 'TrainVAE', 'from_json']
+__all__ = ['Experiment', 'TrainVAE', 'Solar', 'from_json']
 
-EXPERIMENTS = [TrainVAE]
+EXPERIMENTS = [TrainVAE, Solar]
 
 EXPERIMENT_MAP = {}
 for experiment in EXPERIMENTS:

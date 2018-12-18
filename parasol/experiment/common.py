@@ -24,7 +24,7 @@ class Experiment(object):
     def from_dict(cls, params):
         pass
 
-    def run(self, remote=False, gpu=False):
+    def run(self, remote=False, **kwargs):
         out_dir = self.out_dir / self.experiment_name
         if remote is False:
             if not gfile.Exists(out_dir):
@@ -44,7 +44,9 @@ class Experiment(object):
                     traceback.print_exc(file=fp)
         else:
             assert out_dir[:5] == "s3://", "Must be dumping to s3"
-            return ec2.run_remote(out_dir / "params.json")
+            with gfile.GFile(out_dir / "params.json", 'w') as fp:
+                json.dump(self, fp)
+            return ec2.run_remote(out_dir / "params.json", **kwargs)
         return self
 
     @abstractmethod

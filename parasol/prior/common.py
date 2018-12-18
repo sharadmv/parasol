@@ -19,6 +19,9 @@ class Prior(object):
         kl = self.kl_divergence(q_X, q_A, num_data)
         return kl, list(zip(params, T.grad(T.mean(kl, axis=0), params)))
 
+    def has_natural_gradients(self):
+        return False
+
     @abstractmethod
     def kl_divergence(self, q_X, q_A, num_data):
         pass

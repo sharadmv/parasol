@@ -72,6 +72,10 @@ class ParasolEnvironment(object):
         return None
 
     @abstractmethod
+    def make_summary(self, observations, name):
+        pass
+
+    @abstractmethod
     def _observe(self):
         pass
 

@@ -19,6 +19,7 @@ class GymWrapper(ParasolEnvironment):
         )
         GymWrapper.version += 1
         self._config = config
+        self.__dict__.update(config)
         self.gym_env = gym.make(env_name)
         self.state = None
         super(GymWrapper, self).__init__(config['sliding_window'])

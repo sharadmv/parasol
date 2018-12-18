@@ -23,8 +23,8 @@ PEM_FILE = os.path.expanduser("~/.aws/umbrellas.pem")
 
 COMMAND = "from parasol.experiment import from_json; from_json(\\\"%s\\\").run()"
 
-def run_remote(params_path, gpu=False):
-    instance = request_instance('m5.large', 'ami-0920ff5ad096b7c9f', 0.35, params_path)
+def run_remote(params_path, gpu=False, instance_type='m5.large', ami='ami-06cab8c36af91ab46', spot_price=0.3):
+    instance = request_instance(instance_type, ami, spot_price, params_path)
     with create_parasol_zip() as parasol_zip, Connection(instance, user="ubuntu", connect_kwargs={
         "key_filename": PEM_FILE
     }) as conn:
@@ -82,6 +82,7 @@ def wait_on_ssh(instance_ip):
             s.close()
 
 def request_instance(instance_type, ami, spot_price, instance_name):
+    print("Requesting instance:", instance_type)
     response = ec2.request_spot_instances(
         AvailabilityZoneGroup='us-west-2',
         LaunchSpecification=dict(

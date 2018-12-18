@@ -103,3 +103,8 @@ class Reacher(GymWrapper):
             'image_size': kwargs.pop('image_size', 64),
         }
         super(Reacher, self).__init__(config)
+
+    def make_summary(self, observations, name):
+        if self.image:
+            observations = T.reshape(observations, [-1] + self.image_size())
+            T.core.summary.image(name, observations)

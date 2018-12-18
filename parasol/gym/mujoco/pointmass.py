@@ -1,3 +1,4 @@
+from deepx import T
 import math
 import numpy as np
 import os
@@ -123,8 +124,14 @@ class Pointmass(GymWrapper):
         }
         super(Pointmass, self).__init__(config)
 
-    def has_image(self):
+    def is_image(self):
         return self.image
+
+    def make_summary(self, observations, name):
+        if self.image:
+            observations = T.reshape(observations, [-1] + self.image_size())
+            T.core.summary.image(name+"-point", observations[..., 0:1])
+            T.core.summary.image(name+"-goal", observations[..., 1:2])
 
     def image_size(self):
         return [self.image_dim, self.image_dim, 2]

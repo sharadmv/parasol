@@ -1,3 +1,4 @@
+from deepx import T
 import os
 from abc import abstractmethod
 
@@ -59,6 +60,11 @@ class SimpleCar(ParasolEnvironment):
 
     def action_dim(self):
         return 2
+
+    def make_summary(self, observations, name):
+        if self.image:
+            observations = T.reshape(observations, [-1] + self.image_size())
+            T.core.summary.image(name, observations)
 
     def _observe(self):
         if self.image:
