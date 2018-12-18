@@ -30,6 +30,10 @@ class Model(object):
     def has_dynamics(self):
         pass
 
+    @abstractmethod
+    def forward(self, state, action, t):
+        pass
+
     def make_summaries(self, env):
         pass
 

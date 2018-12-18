@@ -124,7 +124,7 @@ class SimpleCar(ParasolEnvironment):
             try:
                 pygame.display.init()
             except:
-                os.putenv('SDL_VIDEODRIVER', 'dummy')
+                # os.putenv('SDL_VIDEODRIVER', 'dummy')
                 pygame.display.init()
             self.screen = pygame.display.set_mode((500, 500), 0, 24)
             self.screen.fill((255, 255, 255))

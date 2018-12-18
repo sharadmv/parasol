@@ -55,5 +55,9 @@ class Dynamics(Prior):
         return True
 
     @abstractmethod
+    def next_state(self, state, action, t):
+        pass
+
+    @abstractmethod
     def get_dynamics(self):
         pass

@@ -46,6 +46,13 @@ class VAE(Model):
 
             self.O = T.placeholder(T.floatx(), [None, None, self.do])
             self.U = T.placeholder(T.floatx(), [None, None, self.du])
+            self.S = T.placeholder(T.floatx(), [None, None, self.ds])
+            self.A = T.placeholder(T.floatx(), [None, None, self.da])
+
+            self.t = T.placeholder(T.int32, [])
+            self.state, self.action = T.placeholder(T.floatx(), [None, self.ds]), T.placeholder(T.floatx(), [None, self.da])
+            self.next_state = self.prior.next_state(self.state, self.action, self.t)
+
             self.num_data = T.scalar()
             self.beta = T.placeholder(T.floatx(), [])
             self.learning_rate = T.placeholder(T.floatx(), [])
@@ -56,6 +63,16 @@ class VAE(Model):
             q_O = self.q_O = util.map_network(self.state_decoder)(q_S.sample()[0])
             q_A = self.q_A = util.map_network(self.action_encoder)(self.U)
             q_U = self.q_U = util.map_network(self.action_decoder)(q_A.sample()[0])
+
+            self.q_S_sample = self.q_S.sample()[0]
+            self.q_A_sample = self.q_A.sample()[0]
+            self.q_O_sample = self.q_O.sample()[0]
+            self.q_U_sample = self.q_U.sample()[0]
+
+            self.q_O_ = util.map_network(self.state_decoder)(self.S)
+            self.q_U_ = util.map_network(self.action_decoder)(self.A)
+            self.q_O__sample = self.q_O_.sample()[0]
+            self.q_U__sample = self.q_U_.sample()[0]
 
             prior_kl, kl_grads = self.prior.kl_and_grads(q_S, q_A, self.num_data)
 
@@ -74,8 +91,11 @@ class VAE(Model):
                 + self.action_encoder.get_parameters()
                 + self.action_decoder.get_parameters()
             )
-            self.neural_op = T.core.train.AdamOptimizer(self.learning_rate).minimize(-train_elbo,
-                                                                                    var_list=neural_params)
+            if len(neural_params) > 0:
+                self.neural_op = T.core.train.AdamOptimizer(self.learning_rate).minimize(-train_elbo,
+                                                                                        var_list=neural_params)
+            else:
+                self.neural_op = T.core.no_op()
             if len(kl_grads) > 0:
                 if self.prior.has_natural_gradients():
                     opt = T.core.train.GradientDescentOptimizer
@@ -170,14 +190,46 @@ class VAE(Model):
         with gfile.GFile(out_dir / "weights" / ("model-%s.pkl" % epoch), 'wb') as fp:
             pickle.dump(self, fp)
 
-    def decode(self):
-        pass
+    def encode(self, o, u, sample=False):
+        leading_dim = o.shape[:-1]
+        o = o[(None,) * (2 - len(leading_dim))]
+        u = u[(None,) * (2 - len(leading_dim))]
+        if sample:
+            s, a = self.session.run([self.q_S_sample, self.q_A_sample], {
+                self.O: o,
+                self.U: u,
+            })
+        else:
+            s, a = self.session.run([self.q_S.expected_value(), self.q_A.expected_value()], {
+                self.O: o,
+                self.U: u,
+            })
+        return s.reshape(leading_dim + (-1,)), a.reshape(leading_dim + (-1,))
 
-    def encode(self):
-        pass
+    def decode(self, s, sample=False):
+        leading_dim = s.shape[:-1]
+        s = s[(None,) * (2 - len(leading_dim))]
+        if sample:
+            o = self.session.run(self.q_O__sample, {
+                self.S: s,
+            })
+        else:
+            o = self.session.run(self.q_O_.expected_value(), {
+                self.S: s,
+            })
+        return o.reshape(leading_dim + (-1,))
 
     def get_dynamics(self):
-        pass
+        return self.session.run(self.prior.get_dynamics())
 
     def has_dynamics(self):
-        pass
+        return self.prior.has_dynamics()
+
+    def forward(self, state, action, t):
+        assert self.has_dynamics()
+        sigma, mu = self.session.run(self.next_state.get_parameters('regular'), {
+            self.state: state,
+            self.action: action,
+            self.t: t
+        })
+        return mu, sigma

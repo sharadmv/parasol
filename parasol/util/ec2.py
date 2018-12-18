@@ -58,7 +58,9 @@ def get_spot_status(request_id):
                 SpotInstanceRequestIds=[request_id]
             )
             return response['SpotInstanceRequests'][0]['InstanceId']
-        except:
+        except KeyboardInterrupt:
+            break
+        except KeyboardInterrupt:
             print('Waiting again...')
 
 def get_instance_url(instance_id):
