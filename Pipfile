@@ -8,15 +8,15 @@ name = "pypi"
 [packages]
 gps = {git = "https://github.com/sharadmv/gps.git"}
 tensorflow = "==1.9"
-gym = {version = "*", extras = ["box2d", "mujoco"]}
-parasol = {path = ".", editable = true}
+gym = {version = "*",extras = ["box2d", "mujoco"]}
+parasol = {path = ".",editable = true}
 jupyter = "*"
 path-py = "*"
 ipdb = "*"
 matplotlib = "*"
 opencv-python = "*"
 tqdm = "*"
-mujoco-py = "*"
+mujoco-py = "==1.50.1.68"
 seaborn = "*"
 pygame = "*"
 sklearn = "*"
