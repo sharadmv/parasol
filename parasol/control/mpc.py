@@ -55,7 +55,7 @@ class MPC(Controller):
             costs[i] = cost
         return costs
 
-    def train(self, rollouts, train_step):
+    def train(self, rollouts, train_step, out_dir=None):
         observations, controls, costs, _ = rollouts
 
         N, T = observations.shape[:2]
