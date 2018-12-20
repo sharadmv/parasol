@@ -7,20 +7,26 @@ class MPC(Controller):
 
     control_type = 'mpc'
 
-    def __init__(self, model, horizon, kl_step=1.0, init_std=1.0, diag_cost=False, action_min=-1.0,
-                 action_max=1.0):
+    def __init__(self, model, horizon,
+                 num_rollouts=100,
+                 diag_cost=False,
+                 action_min=-1.0, action_max=1.0):
         self.model = model
         self.horizon = horizon
         self.ds, self.da = self.model.ds, self.model.da
         self.do, self.du = self.model.do, self.model.du
         self.horizon = horizon
         self.diag_cost = diag_cost
+        self.num_rollouts = num_rollouts
         self.action_min, self.action_max = action_min, action_max
+
+        self.C = np.zeros([self.ds + self.da, self.ds + self.da])
+        self.c = np.zeros([self.ds + self.da])
 
     def initialize(self):
         pass
 
-    def act(self, obs, t):
+    def act(self, obs, t, noise=None):
         state, _ = self.model.encode(obs, np.zeros(self.model.du))
         states, actions = self.sim_actions_forward(state, t)
         costs = self.eval_traj_costs(states, actions)
@@ -30,9 +36,11 @@ class MPC(Controller):
 
     def sim_actions_forward(self, state, start_time):
         states = [np.tile(state, [512, 1])]
-        actions = np.random.uniform(self.action_min, self.action_max, size=(512, self.horizon - start_time, self.da))
+        env_horizon = self.model.horizon
+        horizon = min(self.horizon, env_horizon - start_time - 1)
+        actions = np.random.uniform(self.action_min, self.action_max, size=(512, horizon + 1, self.da))
         curr_states = states[0]
-        for t in range(self.horizon - start_time - 1):
+        for t in range(horizon):
             curr_states, _ = self.model.forward(curr_states, actions[:, t], start_time + t)
             states.append(curr_states)
         return np.array(states).transpose([1, 0, 2]), actions
@@ -47,8 +55,9 @@ class MPC(Controller):
             costs[i] = cost
         return costs
 
-    def train(self, rollouts):
+    def train(self, rollouts, train_step):
         observations, controls, costs, _ = rollouts
+
         N, T = observations.shape[:2]
         ds, da = self.ds, self.da
         dsa = ds + da

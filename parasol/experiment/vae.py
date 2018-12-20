@@ -47,6 +47,14 @@ class TrainVAE(Experiment):
         self.env = gym.from_config(self.env_params)
         self.model.make_summaries(self.env)
 
+    def initialize(self, out_dir):
+        if not gfile.Exists(out_dir / "tb"):
+            gfile.MakeDirs(out_dir / "tb")
+        if not gfile.Exists(out_dir / "weights"):
+            gfile.MakeDirs(out_dir / "weights")
+        if not gfile.Exists(out_dir / "weights"):
+            gfile.MakeDirs(out_dir / "weights")
+
     def to_dict(self):
         return {
             "seed": self.seed,

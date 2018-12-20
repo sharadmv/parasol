@@ -2,20 +2,8 @@ from abc import abstractmethod, ABCMeta
 
 class Controller(object, metaclass=ABCMeta):
 
-    def __init__(self):
-        self.parameters = {}
-
-    def get_parameters(self):
-        return self.parameters
-
-    def get_parameter(self, name):
-        return self.parameters[name]
-
-    def set_parameter(self, name, value):
-        self.parameters[name] = value
-
     @abstractmethod
-    def initialize(self, initial_policy=None):
+    def initialize(self):
         pass
 
     @abstractmethod
@@ -23,11 +11,5 @@ class Controller(object, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def train(self, data):
-        pass
-
-    def preprocess(self):
-        pass
-
-    def postprocess(self):
+    def train(self, rollouts, train_step):
         pass

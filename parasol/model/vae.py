@@ -85,6 +85,7 @@ class VAE(Model):
             T.core.summary.scalar("beta", self.beta)
             T.core.summary.scalar("elbo", elbo)
             T.core.summary.scalar("beta-elbo", train_elbo)
+            self.summary = T.core.summary.merge_all()
             neural_params = (
                 self.state_encoder.get_parameters()
                 + self.state_decoder.get_parameters()
@@ -117,7 +118,7 @@ class VAE(Model):
         self.summary = T.core.summary.merge_all()
 
     def train(self, rollouts,
-              out_dir='out/',
+              out_dir=None,
               num_epochs=100,
               batch_size=50,
               learning_rate=1e-4,
@@ -126,9 +127,12 @@ class VAE(Model):
         beta = beta_start
         O, U = rollouts[0], rollouts[1]
         N = O.shape[0]
-        writer = T.core.summary.FileWriter(out_dir / "tb")
+        if out_dir is None:
+            writer = None
+        else:
+            writer = T.core.summary.FileWriter(out_dir / "tb")
         global_iter = 0
-        for epoch in tqdm.trange(num_epochs, desc='Experiment'):
+        for epoch in tqdm.trange(num_epochs, desc='Training'):
             if dump_every is not None and epoch % dump_every == 0:
                 self.dump_weights(epoch, out_dir)
             permutation = np.random.permutation(N)
@@ -143,8 +147,9 @@ class VAE(Model):
                         self.num_data: N,
                         self.learning_rate: learning_rate,
                     })
-                    writer.add_summary(summary, global_iter)
-                    writer.flush()
+                    if writer is not None:
+                        writer.add_summary(summary, global_iter)
+                        # writer.flush()
                 else:
                     self.session.run(self.train_op, {
                         self.O: O[batch_idx],
@@ -187,8 +192,9 @@ class VAE(Model):
         self.session.run([T.core.assign(a, b) for a, b in zip(self.prior.get_parameters(), weights[4])])
 
     def dump_weights(self, epoch, out_dir):
-        with gfile.GFile(out_dir / "weights" / ("model-%s.pkl" % epoch), 'wb') as fp:
-            pickle.dump(self, fp)
+        if out_dir is not None:
+            with gfile.GFile(out_dir / "weights" / ("model-%s.pkl" % epoch), 'wb') as fp:
+                pickle.dump(self, fp)
 
     def encode(self, o, u, sample=False):
         leading_dim = o.shape[:-1]

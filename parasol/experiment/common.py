@@ -16,6 +16,10 @@ class Experiment(object):
         self.out_dir = Path(out_dir)
 
     @abstractmethod
+    def initialize(self, out_dir):
+        pass
+
+    @abstractmethod
     def to_dict(self):
         pass
 
@@ -29,12 +33,9 @@ class Experiment(object):
         if remote is False:
             if not gfile.Exists(out_dir):
                 gfile.MakeDirs(out_dir)
-            if not gfile.Exists(out_dir / "tb"):
-                gfile.MakeDirs(out_dir / "tb")
-            if not gfile.Exists(out_dir / "weights"):
-                gfile.MakeDirs(out_dir / "weights")
             with gfile.GFile(out_dir / "params.json", 'w') as fp:
                 json.dump(self, fp)
+            self.initialize(out_dir)
             try:
                 with tee_out(out_dir):
                     self.run_experiment(out_dir)

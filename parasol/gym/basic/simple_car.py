@@ -51,7 +51,7 @@ class SimpleCar(ParasolEnvironment):
         self.curr_state = self.dynamics(self.curr_state, action)
         agent, target = self.curr_state['agent'], self.curr_state['target']
         dist = np.linalg.norm(agent[:2] - target)
-        return self.observe(), cost, False, {'dist': dist}
+        return self.observe(), cost, False, {'distance': dist}
 
     def state_dim(self):
         if self.image:

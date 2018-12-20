@@ -4,6 +4,7 @@ from deepx import T
 import numpy as np
 import random
 
+import parasol.util as util
 import parasol.gym as gym
 import parasol.control
 import parasol.model
@@ -18,20 +19,41 @@ class Solar(Experiment):
 
     def __init__(self, experiment_name, env, control, model,
                  seed=0,
+                 horizon=50,
+                 num_videos=1,
+                 rollouts_per_iter=100,
+                 num_iters=10,
+                 model_train={},
                  **kwargs):
         super(Solar, self).__init__(experiment_name, **kwargs)
         self.env_params = env
         self.env = gym.from_config(env)
         self.control_params = control
-        self.horizon = control['horizon']
+        self.horizon = horizon
         self.model_path = model
         self.seed = seed
-        self.initialize()
+        self.num_videos = num_videos
+        self.rollouts_per_iter = rollouts_per_iter
+        self.num_iters = num_iters
+        self.model_train_params = model_train
+        self.initialize_params()
 
-    def initialize(self):
+    def initialize(self, out_dir):
+        if not gfile.Exists(out_dir / "tb"):
+            gfile.MakeDirs(out_dir / "tb")
+        if not gfile.Exists(out_dir / "weights"):
+            gfile.MakeDirs(out_dir / "weights")
+        if not gfile.Exists(out_dir / "policy"):
+            gfile.MakeDirs(out_dir / "policy")
+        if not gfile.Exists(out_dir / "videos"):
+            gfile.MakeDirs(out_dir / "videos")
+
+    def initialize_params(self):
         if self.model_path is not None:
             with gfile.GFile(self.model_path, 'rb') as fp:
                 self.model = pickle.load(fp)
+        else:
+            self.model = parasol.model.NoModel()
         self.control = parasol.control.from_config(self.model, self.control_params)
 
     def to_dict(self):
@@ -41,7 +63,11 @@ class Solar(Experiment):
             'env': self.env_params.copy(),
             'control': self.control_params.copy(),
             'model': self.model_path,
+            'model_train': self.model_train_params,
             'out_dir': self.out_dir,
+            'rollouts_per_iter': self.rollouts_per_iter,
+            'num_videos': self.num_videos,
+            'num_iters': self.num_iters,
         }
 
     @classmethod
@@ -53,6 +79,10 @@ class Solar(Experiment):
             params['model'],
             out_dir=params['out_dir'],
             seed=params['seed'],
+            num_videos=params['num_videos'],
+            num_iters=params['num_iters'],
+            model_train=params['model_train'],
+            rollouts_per_iter=params['rollouts_per_iter']
         )
 
     def run_experiment(self, out_dir):
@@ -61,11 +91,19 @@ class Solar(Experiment):
         np.random.seed(self.seed)
         random.seed(self.seed)
 
-        initial_rollouts = self.env.rollouts(100, self.horizon)
+        def noise_function():
+            return util.generate_noise((self.horizon, self.control.da), smooth=True)
 
-        model = self.model
-        control = self.control
-
-        control.train(initial_rollouts)
-        with self.env.video(out_dir / 'out.mp4'):
-            self.env.rollout(self.horizon, policy=control.act, render=True, show_progress=True)
+        for i in range(self.num_iters):
+            def video_callback(j):
+                if j < self.num_videos:
+                    return self.env.video(out_dir / 'videos' / 'iter-{}-{}.mp4'.format(i + 1, j + 1))
+            print("Iteration {}: ==================================================".format(i))
+            with self.env.logging(out_dir / 'results.csv', verbose=True):
+                rollouts = self.env.rollouts(self.rollouts_per_iter, self.horizon,
+                                            policy=self.control.act,
+                                            callback=video_callback,
+                                            noise=noise_function,
+                                            show_progress=True)
+            self.control.train(rollouts, i, out_dir=out_dir)
+            self.model.train(rollouts, out_dir=out_dir, **self.model_train_params)

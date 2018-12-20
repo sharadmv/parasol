@@ -1,8 +1,9 @@
 from .common import Controller
 
 from .mpc import MPC
+from .lqrflm import LQRFLM
 
-CONTROLLERS = [MPC]
+CONTROLLERS = [MPC, LQRFLM]
 CONTROL_MAP = {c.control_type: c for c in CONTROLLERS}
 
 def from_config(model, control_params):
