@@ -59,7 +59,7 @@ class LQRFLM(Controller):
         if noise is None:
             noise = np.random.randn(self.da)
         noise = np.einsum('ab,b->a', cS[t], noise)
-        action = np.einsum('ab,b->a', K[t], state) + noise
+        action = np.einsum('ab,b->a', K[t], state) + k[t] + noise
         return action
 
     def train(self, rollouts, train_step, out_dir=None):
@@ -68,7 +68,6 @@ class LQRFLM(Controller):
             self.actual_impr = self.prev_cost_estimate - self.estimate_cost()
             self.step_adjust()
         self.prev_cost_estimate = self.estimate_cost()
-        import ipdb; ipdb.set_trace()
         self.policy_params = self.tr_update()
         self.predicted_impr = self.prev_cost_estimate - self.estimate_cost()
         with gfile.GFile(out_dir / 'policy' / '{}.pkl'.format(train_step), 'wb') as fp:
@@ -149,7 +148,6 @@ class LQRFLM(Controller):
                     # print('mse itr {}: {}'.format(itr, m))
             # cost_mat, cost_vec = sess.run((LL, c))
 
-            # import ipdb; ipdb.set_trace()
             # self.C[:, :ds, :ds] = cost_mat
             # self.C[:, ds:, ds:] = env.torque_matrix()
             # self.c[:, :ds] = cost_vec
@@ -277,7 +275,7 @@ class LQRFLM(Controller):
         idx_s = slice(ds)
         idx_a = slice(ds, ds+da)
         D, d = self.D, self.d
-        K, k, S, cS, iS = self.policy_params
+        K, k, S, cS, iS = [a.copy() for a in self.policy_params]
 
         del_, eta0 = 1e-4, eta
         fail = True
@@ -322,6 +320,7 @@ class LQRFLM(Controller):
                 Vtt[t] = Qtt[t, idx_s, idx_s] + Qtt[t, idx_s, idx_a].dot(K[t])
                 Vt[t] = Qt[t, idx_s] + Qtt[t, idx_s, idx_a].dot(k[t])
                 Vtt[t] = 0.5 * (Vtt[t] + Vtt[t].T)
+
 
             if fail:
                 old_eta = eta

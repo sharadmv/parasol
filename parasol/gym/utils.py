@@ -1,3 +1,5 @@
+import tempfile
+import tensorflow as tf
 import json
 import os
 import subprocess
@@ -9,7 +11,10 @@ from six import StringIO
 import six
 from gym import error, logger
 
+gfile = tf.gfile
+
 def touch(path):
+    return
     open(path, 'a').close()
 
 class VideoRecorder(object):
@@ -231,9 +236,10 @@ class TextEncoder(object):
         return {'backend':'TextEncoder','version':1}
 
 class ImageEncoder(object):
-    def __init__(self, output_path, frame_shape, frames_per_sec):
+    def __init__(self, final_path, frame_shape, frames_per_sec):
         self.proc = None
-        self.output_path = output_path
+        self.final_path = final_path
+        _, self.output_path = tempfile.mkstemp(suffix='.mp4')
         # Frame shape should be lines-first, so w and h are swapped
         h, w, pixfmt = frame_shape
         if pixfmt != 3 and pixfmt != 4:
@@ -304,3 +310,5 @@ class ImageEncoder(object):
         ret = self.proc.wait()
         if ret != 0:
             logger.error("VideoRecorder encoder exited with status {}".format(ret))
+        gfile.Copy(self.output_path, self.final_path, overwrite=True)
+        os.remove(self.output_path)

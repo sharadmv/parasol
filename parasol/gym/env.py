@@ -192,8 +192,8 @@ class ParasolEnvironment(object):
             if self.verbose_logging:
                 for k in self.log_entries[0].keys():
                     if k == 'episode_number': continue
-                    print("Average %s: %s" % (k, np.array([l[k] for l in
-                                                           self.log_entries]).mean()))
+                    metric = np.array([l[k] for l in self.log_entries])
+                    print("Average %s: %.3f +/- %.3f" % (k, metric.mean(), metric.std()))
         self.log_entries = None
         self.log_file = None
         self.currently_logging = False

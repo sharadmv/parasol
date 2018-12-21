@@ -1,3 +1,4 @@
+from deepx import T
 import cv2
 import numpy as np
 import os
@@ -12,21 +13,12 @@ __all__ = ['Reacher']
 class GymReacher(mujoco_env.MujocoEnv, utils.EzPickle):
 
     def __init__(self, *args, **kwargs):
-        self.image = kwargs.pop('image', False)
         self.__dict__.update(kwargs)
         utils.EzPickle.__init__(self)
         if self.image:
             self.prev_obs = None #np.zeros([64, 64, 3])
         assets_dir = os.path.join(os.path.dirname(__file__), "assets", "reacher.xml")
         mujoco_env.MujocoEnv.__init__(self, assets_dir, 2)
-
-    def is_image(self):
-        return self.image
-
-    def image_size(self):
-        if self.image:
-            return [self.image_size, self.image_size, 3]
-        return None
 
     def reward(self, x, a):
         reward_dist = - np.linalg.norm(x)
@@ -61,7 +53,10 @@ class GymReacher(mujoco_env.MujocoEnv, utils.EzPickle):
         self.viewer.cam.distance = 0.6
 
     def reset_model(self):
-        qpos = self.get_start() + self.init_qpos
+        if self.random_start:
+            qpos = self.np_random.uniform(low=-np.pi, high=np.pi, size=self.model.nq) + self.init_qpos
+        else:
+            qpos = self.np_random.uniform(low=-0.1, high=0.1, size=self.model.nq) + self.init_qpos
         self.goal = self.get_goal()
         qpos[-2:] = self.goal
         qvel = self.init_qvel + self.np_random.uniform(low=-.005, high=.005, size=self.model.nv)
@@ -75,7 +70,7 @@ class GymReacher(mujoco_env.MujocoEnv, utils.EzPickle):
     def _get_obs(self):
         if self.image:
             img = self.render(mode='rgb_array')
-            return (cv2.resize(img, (self.image_size, self.image_size), interpolation=cv2.INTER_LINEAR) / 255).flatten()
+            return (cv2.resize(img, (self.image_dim, self.image_dim), interpolation=cv2.INTER_LINEAR) / 255).flatten()
         else:
             theta = self.sim.data.qpos.flat[:2]
             return np.concatenate([
@@ -84,7 +79,7 @@ class GymReacher(mujoco_env.MujocoEnv, utils.EzPickle):
                 self.sim.data.qpos.flat[2:],
                 self.sim.data.qvel.flat[:2],
                 self.get_body_com("fingertip") - self.get_body_com("target")
-            ])[:-1]
+            ])[:-1] + np.concatenate([np.zeros(4), np.random.normal(size=2, scale=0.01), np.zeros(4)])
 
 class Reacher(GymWrapper):
 
@@ -100,7 +95,7 @@ class Reacher(GymWrapper):
             'random_target': kwargs.pop('random_target', False),
             'random_start': kwargs.pop('random_start', False),
             'default_goal': kwargs.pop('default_goal', [-0.1, -0.1]),
-            'image_size': kwargs.pop('image_size', 64),
+            'image_dim': kwargs.pop('image_dim', 64),
         }
         super(Reacher, self).__init__(config)
 
@@ -108,3 +103,12 @@ class Reacher(GymWrapper):
         if self.image:
             observations = T.reshape(observations, [-1] + self.image_size())
             T.core.summary.image(name, observations)
+
+    def is_image(self):
+        return self.image
+
+    def image_size(self):
+        if self.image:
+            return [self.image_dim, self.image_dim, 3]
+        return None
+

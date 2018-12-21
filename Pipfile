@@ -26,6 +26,7 @@ fabric = "*"
 "boto3" = "*"
 pandas = "*"
 gps = {git = "https://github.com/sharadmv/gps.git",editable = true}
+click = "*"
 
 [requires]
 python_version = "3.6"

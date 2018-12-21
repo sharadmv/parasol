@@ -95,7 +95,8 @@ class Solar(Experiment):
         random.seed(self.seed)
 
         def noise_function():
-            n = util.generate_noise((self.horizon, self.control.da), smooth=True)
+            n = util.generate_noise((self.horizon, self.control.da),
+                                    smooth=False)
             return n
 
         for i in range(self.num_iters):

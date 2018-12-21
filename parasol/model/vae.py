@@ -51,7 +51,8 @@ class VAE(Model):
 
             self.t = T.placeholder(T.int32, [])
             self.state, self.action = T.placeholder(T.floatx(), [None, self.ds]), T.placeholder(T.floatx(), [None, self.da])
-            self.next_state = self.prior.next_state(self.state, self.action, self.t)
+            if self.prior.has_dynamics():
+                self.next_state = self.prior.next_state(self.state, self.action, self.t)
 
             self.num_data = T.scalar()
             self.beta = T.placeholder(T.floatx(), [])
