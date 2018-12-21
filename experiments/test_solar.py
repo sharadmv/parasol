@@ -1,30 +1,35 @@
 import numpy as np
-np.set_printoptions(suppress=True, precision=4)
-import parasol.gym as gym
+np.set_printoptions(suppress=True, precision=4, linewidth=120)
 from parasol.experiment import Solar
 
-env_params = {
-    "environment_name": "SimpleCar",
-    "random_start": True,
-    "random_target": False,
-}
-env = gym.from_config(env_params)
 experiment = Solar(
-    'test-solar',
-    env_params,
+    'reacher-lqrflm',
+    {
+        "environment_name": "Reacher",
+        "random_start": False,
+        "random_target": False,
+    },
+    # control={
+        # 'control_type': 'mpc',
+        # 'horizon': 3,
+        # 'action_min': -10,
+        # 'action_max': 10,
+    # },
     control={
         'control_type': 'lqrflm',
-        'horizon': 100,
-        'init_std': 10,
-        'kl_step': 10,
+        'horizon': 50,
+        'init_std': 0.5,
+        'kl_step': 1,
     },
-    model='s3://parasol-experiments/car-noimage/blds/weights/model-final.pkl',
-    horizon=100,
-    seed=1,
-    num_videos=0,
+    # model='s3://parasol-experiments/vae/reacher-noimage/blds/weights/model-final.pkl',
+    model=None,
+    horizon=50,
+    seed=0,
+    rollouts_per_iter=100,
+    num_videos=1,
     out_dir='out/',
     model_train={
         'num_epochs': 0
     }
 )
-experiment.run()
+experiment.run(remote=False)

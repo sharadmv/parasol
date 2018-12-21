@@ -6,7 +6,6 @@ name = "pypi"
 [dev-packages]
 
 [packages]
-gps = {git = "https://github.com/sharadmv/gps.git",editable = true}
 tensorflow = "==1.9"
 gym = {version = "*",extras = ["box2d", "mujoco"]}
 parasol = {path = ".",editable = true}
@@ -26,6 +25,7 @@ kfac = "*"
 fabric = "*"
 "boto3" = "*"
 pandas = "*"
+gps = {git = "https://github.com/sharadmv/gps.git",editable = true}
 
 [requires]
 python_version = "3.6"

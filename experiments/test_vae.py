@@ -1,10 +1,9 @@
 from deepx import nn
-from parasol.util import json
-from parasol.experiment import TrainVAE, from_json
+from parasol.experiment import TrainVAE
 import parasol.gym as gym
 
 env_params = {
-    "environment_name": "Pointmass",
+    "environment_name": "Reacher",
     "random_start": True,
     "random_target": True,
     # "image": True,
@@ -14,10 +13,10 @@ env = gym.from_config(env_params)
 do = env.get_state_dim()
 ds = do
 du = da = env.get_action_dim()
-horizon = 100
+horizon = 50
 
 experiment = TrainVAE(
-    "blds",
+    "nnds",
     env_params,
     dict(
         do=do, du=du, ds=ds, da=da, horizon=horizon,
@@ -38,11 +37,11 @@ experiment = TrainVAE(
         # prior={'prior_type': 'none'},
         # prior={'prior_type': 'normal'},
         # prior={'prior_type': 'lds'},
-        prior={'prior_type': 'blds'},
-        # prior={'prior_type': 'nnds', 'network': nn.Relu(ds + da, 200) >> nn.Relu(200) >> nn.Gaussian(ds)},
+        # prior={'prior_type': 'blds'},
+        prior={'prior_type': 'nnds', 'network': nn.Relu(ds + da, 200) >> nn.Relu(200) >> nn.Gaussian(ds)},
     ),
     train=dict(
-        num_epochs=1000,
+        num_epochs=4000,
         learning_rate=1e-4,
         batch_size=2,
         dump_every=50,
@@ -50,9 +49,9 @@ experiment = TrainVAE(
     ),
     data=dict(
         num_rollouts=100,
-        policy_variance=1
+        init_std=0.1,
     ),
-    out_dir='s3://parasol-experiments/pm-noimage',
+    out_dir='s3://parasol-experiments/vae/reacher-noimage',
     # out_dir='temp2/pm-noimage',
 )
-experiment.run(remote=True, instance_type='m5.2xlarge')
+experiment.run(remote=True, instance_type='m5.4xlarge')

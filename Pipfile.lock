@@ -283,7 +283,7 @@
         "gps": {
             "editable": true,
             "git": "https://github.com/sharadmv/gps.git",
-            "ref": "4b6b644896f953e89a6cf3e926d475a3e7b7c5f2"
+            "ref": "66e9ef13d998bf64a0833654adba7a5d2a78d27d"
         },
         "grpcio": {
             "hashes": [

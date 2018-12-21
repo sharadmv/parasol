@@ -3,11 +3,11 @@ from .common import Model
 class NoModel(Model):
 
     def __init__(self, do, du, horizon):
-        self.do = do
-        self.du = du
+        self.do = self.ds = do
+        self.du = self.da = du
         self.horizon = horizon
 
-    def train(self, rollouts):
+    def train(self, rollouts, **kwargs):
         pass
 
     def encode(self, y, a):

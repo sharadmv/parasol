@@ -96,7 +96,7 @@ class SimpleCar(ParasolEnvironment):
 
     def cost(self, state, action):
         agent, target = state['agent'], state['target']
-        return (np.square(agent[:2] - target).sum() + 0.5 * 1e-3 * np.square(action).sum())
+        return (np.square(agent[:2] - target).sum() + 0.5 * 1e-8 * np.square(action).sum())
 
     def random_point(self):
         return np.random.uniform(-2.0, 2.0, 2)
@@ -124,7 +124,7 @@ class SimpleCar(ParasolEnvironment):
             try:
                 pygame.display.init()
             except:
-                # os.putenv('SDL_VIDEODRIVER', 'dummy')
+                os.putenv('SDL_VIDEODRIVER', 'dummy')
                 pygame.display.init()
             self.screen = pygame.display.set_mode((500, 500), 0, 24)
             self.screen.fill((255, 255, 255))

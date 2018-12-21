@@ -53,11 +53,14 @@ class Solar(Experiment):
             with gfile.GFile(self.model_path, 'rb') as fp:
                 self.model = pickle.load(fp)
         else:
-            self.model = parasol.model.NoModel()
+            self.model = parasol.model.NoModel(self.env.get_state_dim(),
+                                               self.env.get_action_dim(), self.horizon)
         self.control = parasol.control.from_config(self.model, self.control_params)
 
     def to_dict(self):
         return {
+            'experiment_name': self.experiment_name,
+            'experiment_type': self.experiment_type,
             'env': self.env_params,
             'seed': self.seed,
             'env': self.env_params.copy(),
@@ -92,7 +95,8 @@ class Solar(Experiment):
         random.seed(self.seed)
 
         def noise_function():
-            return util.generate_noise((self.horizon, self.control.da), smooth=True)
+            n = util.generate_noise((self.horizon, self.control.da), smooth=True)
+            return n
 
         for i in range(self.num_iters):
             def video_callback(j):
@@ -107,3 +111,13 @@ class Solar(Experiment):
                                             show_progress=True)
             self.control.train(rollouts, i, out_dir=out_dir)
             self.model.train(rollouts, out_dir=out_dir, **self.model_train_params)
+
+        def video_callback(j):
+            if j < self.num_videos:
+                return self.env.video(out_dir / 'videos' / 'final-{}.mp4'.format(j + 1))
+        with self.env.logging(out_dir / 'results.csv', verbose=True):
+            rollouts = self.env.rollouts(self.rollouts_per_iter, self.horizon,
+                                        policy=self.control.act,
+                                        callback=video_callback,
+                                        noise=noise_function,
+                                        show_progress=True)

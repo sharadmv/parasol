@@ -25,7 +25,7 @@ class TrainVAE(Experiment):
                  train={},
                  seed=0,
                  num_rollouts=100,
-                 policy_variance=1.,
+                 init_std=1.,
                  num_epochs=1000,
                  learning_rate=1e-4,
                  batch_size=20,
@@ -87,9 +87,11 @@ class TrainVAE(Experiment):
         random.seed(self.seed)
 
         env = self.env
-        num_rollouts, policy_variance = self.data_params['num_rollouts'], self.data_params['policy_variance']
+        num_rollouts, init_std = self.data_params['num_rollouts'], self.data_params['init_std']
 
         def policy(x, _):
-            return np.random.multivariate_normal(mean=np.zeros(env.get_action_dim()), cov=np.eye(env.get_action_dim()) * policy_variance)
+            return np.random.multivariate_normal(mean=np.zeros(env.get_action_dim()),
+                                      cov=np.eye(env.get_action_dim()) *
+                                      (init_std**2))
         rollouts = env.rollouts(num_rollouts, self.horizon, policy=policy, show_progress=True)
         self.model.train(rollouts, out_dir=out_dir, **self.train_params)

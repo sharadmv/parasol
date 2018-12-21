@@ -42,6 +42,29 @@ class MPC(Controller):
         curr_states = states[0]
         for t in range(horizon):
             curr_states, _ = self.model.forward(curr_states, actions[:, t], start_time + t)
+            # x, y = curr_states[..., 0], curr_states[..., 1]
+            # theta = np.arctan2(curr_states[..., 3], curr_states[..., 2])
+            # v = curr_states[..., 4]
+            # phi = np.arctan2(curr_states[..., 6], curr_states[..., 5])
+            # target = curr_states[..., 7:9]
+
+            # dx, dy = v * np.cos(theta), v * np.sin(theta)
+            # # model car length as 1.0
+            # dtheta = v * np.tan(phi)
+            # agent = np.array([x + 0.1 * dx, y + 0.1 * dy, theta + 0.1 * dtheta,
+                              # v + 0.1 * actions[:, t, 0], phi + 0.1 * actions[:, t, 1]])
+            # #TODO: not properly modeling car's collisions with walls
+            # agent[0] = np.clip(agent[0], -2.3, 2.3)
+            # agent[1] = np.clip(agent[1], -2.3, 2.3)
+            # agent[3] = np.clip(agent[3], -1.0, 1.0)
+            # agent[4] = np.clip(agent[4], -np.pi/4, np.pi/4)
+            # x, y, theta, v, phi = agent
+            # curr_states = np.concatenate([x[..., None], y[..., None],
+                                          # np.cos(theta)[..., None],
+                                          # np.sin(theta)[..., None], v[..., None],
+                            # np.cos(phi)[..., None], np.sin(phi)[..., None],
+                                          # target[..., 0][..., None],
+                                     # target[..., 1][..., None]], -1)
             states.append(curr_states)
         return np.array(states).transpose([1, 0, 2]), actions
 

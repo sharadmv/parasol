@@ -183,7 +183,7 @@ class ParasolEnvironment(object):
 
     def stop_logging(self):
         if len(self.log_entries) > 0:
-            with open(self.log_file, 'a+') as fp:
+            with gfile.GFile(self.log_file, 'a+') as fp:
                 log_writer = csv.writer(fp)
                 if (self.episode_number - len(self.log_entries) - 1) == 0:
                     log_writer.writerow(self.log_entries[0].keys())

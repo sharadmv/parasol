@@ -70,7 +70,5 @@ class NNDS(Dynamics):
         return self.cache[(q_X, q_A)]
 
     def next_state(self, state, action, t):
-        A, Q = self.get_dynamics()
-        leading_dim = T.shape(state)[:-1]
         state_action = T.concatenate([state, action], -1)
         return self.network(state_action)

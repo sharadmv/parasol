@@ -111,11 +111,12 @@ class VAE(Model):
         self.session = T.interactive_session(graph=self.graph)
 
     def make_summaries(self, env):
-        if env.is_image():
-            idx = T.random_uniform([], minval = 0, maxval = self.horizon - 1, dtype = T.int32)
-            env.make_summary(self.q_O.get_parameters('regular')[0:1][:, idx], "reconstruction")
-            env.make_summary(self.O[0:1][:, idx], "truth")
-        self.summary = T.core.summary.merge_all()
+        with self.graph.as_default():
+            if env.is_image():
+                idx = T.random_uniform([], minval = 0, maxval = self.horizon - 1, dtype = T.int32)
+                env.make_summary(self.q_O.get_parameters('regular')[0:1][:, idx], "reconstruction")
+                env.make_summary(self.O[0:1][:, idx], "truth")
+            self.summary = T.core.summary.merge_all()
 
     def train(self, rollouts,
               out_dir=None,
@@ -149,7 +150,7 @@ class VAE(Model):
                     })
                     if writer is not None:
                         writer.add_summary(summary, global_iter)
-                        # writer.flush()
+                        writer.flush()
                 else:
                     self.session.run(self.train_op, {
                         self.O: O[batch_idx],
@@ -160,6 +161,8 @@ class VAE(Model):
                     })
                 global_iter += 1
                 beta = min(beta_end, beta + beta_rate)
+        if writer is not None:
+            writer.flush()
         self.dump_weights("final", out_dir)
 
     def __getstate__(self):

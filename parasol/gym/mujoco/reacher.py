@@ -29,9 +29,9 @@ class GymReacher(mujoco_env.MujocoEnv, utils.EzPickle):
         return None
 
     def reward(self, x, a):
-        reward_dist = - np.sum(np.square(x))
-        reward_ctrl = - np.square(a).sum() * 0.05
-        return reward_dist + reward_ctrl, {'Distance' : np.sqrt(-reward_dist)}
+        reward_dist = - np.linalg.norm(x)
+        reward_ctrl = - np.square(a).sum()
+        return reward_dist + reward_ctrl, {'distance' : -reward_dist}
 
     def step(self, a):
         vec = self.get_body_com("fingertip")-self.get_body_com("target")
@@ -39,7 +39,7 @@ class GymReacher(mujoco_env.MujocoEnv, utils.EzPickle):
         self.do_simulation(a, self.frame_skip)
         ob = self._get_obs()
         done = False
-        return ob, reward, done, info
+        return ob, -reward, done, info
 
     def get_start(self):
         if self.random_start:
@@ -84,7 +84,7 @@ class GymReacher(mujoco_env.MujocoEnv, utils.EzPickle):
                 self.sim.data.qpos.flat[2:],
                 self.sim.data.qvel.flat[:2],
                 self.get_body_com("fingertip") - self.get_body_com("target")
-            ])
+            ])[:-1]
 
 class Reacher(GymWrapper):
 
