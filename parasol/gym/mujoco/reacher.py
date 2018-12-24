@@ -21,9 +21,15 @@ class GymReacher(mujoco_env.MujocoEnv, utils.EzPickle):
         mujoco_env.MujocoEnv.__init__(self, assets_dir, 2)
 
     def reward(self, x, a):
-        reward_dist = - np.linalg.norm(x)
-        reward_ctrl = - np.square(a).sum()
-        return reward_dist + reward_ctrl, {'distance' : -reward_dist}
+        if self.easy_cost:
+            reward_dist = - np.square(x).sum()
+            reward_ctrl = - np.square(a).sum()
+            dist = np.linalg.norm(x)
+        else:
+            reward_dist = - np.linalg.norm(x)
+            reward_ctrl = - np.square(a).sum()
+            dist = -reward_dist
+        return reward_dist + reward_ctrl, {'distance' : dist}
 
     def step(self, a):
         vec = self.get_body_com("fingertip")-self.get_body_com("target")
@@ -31,7 +37,7 @@ class GymReacher(mujoco_env.MujocoEnv, utils.EzPickle):
         self.do_simulation(a, self.frame_skip)
         ob = self._get_obs()
         done = False
-        return ob, -reward, done, info
+        return ob, reward, done, info
 
     def get_start(self):
         if self.random_start:
@@ -73,13 +79,14 @@ class GymReacher(mujoco_env.MujocoEnv, utils.EzPickle):
             return (cv2.resize(img, (self.image_dim, self.image_dim), interpolation=cv2.INTER_LINEAR) / 255).flatten()
         else:
             theta = self.sim.data.qpos.flat[:2]
-            return np.concatenate([
+            obs = np.concatenate([
                 np.cos(theta),
                 np.sin(theta),
                 self.sim.data.qpos.flat[2:],
                 self.sim.data.qvel.flat[:2],
                 self.get_body_com("fingertip") - self.get_body_com("target")
             ])[:-1] + np.concatenate([np.zeros(4), np.random.normal(size=2, scale=0.01), np.zeros(4)])
+            return obs
 
 class Reacher(GymWrapper):
 
@@ -96,8 +103,12 @@ class Reacher(GymWrapper):
             'random_start': kwargs.pop('random_start', False),
             'default_goal': kwargs.pop('default_goal', [-0.1, -0.1]),
             'image_dim': kwargs.pop('image_dim', 64),
+            'easy_cost': kwargs.pop('easy_cost', False),
         }
         super(Reacher, self).__init__(config)
+
+    def torque_matrix(self):
+        return 2 * np.eye(self.get_action_dim())
 
     def make_summary(self, observations, name):
         if self.image:

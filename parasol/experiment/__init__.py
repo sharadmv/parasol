@@ -24,7 +24,8 @@ def from_json(fp):
         params = json.load(fp)
     return EXPERIMENT_MAP[params['experiment_type']].from_dict(params)
 
-def expand_params(params, name=''):
+def expand_params(params):
+    params = params.copy()
     for k, v in params.items():
         if isinstance(v, dict):
             v_s = list(expand_params(v))

@@ -14,11 +14,13 @@ class LQRFLM(Controller):
 
     control_type = 'lqrflm'
 
-    def __init__(self, model, horizon, kl_step=2.0, init_std=1.0, diag_cost=False,
+    def __init__(self, model, env, horizon, kl_step=2.0, init_std=1.0, diag_cost=False,
                  linearize_policy = False,
+                 pd_cost = False,
                  prior_type='gmm'):
         self.model = model
         self.horizon = horizon
+        self.env = env
         self.ds, self.da = self.model.ds, self.model.da
         self.do, self.du = self.model.do, self.model.du
         self.init_std = np.ones(self.da) * init_std
@@ -26,6 +28,7 @@ class LQRFLM(Controller):
         self.horizon = horizon
         self.diag_cost = diag_cost
         self.prior_type = prior_type
+        self.pd_cost = pd_cost
         self.linearize_policy = linearize_policy
         self.initialize()
 
@@ -112,70 +115,27 @@ class LQRFLM(Controller):
                         SAS_, slice(ds+da), slice(ds+da, ds+da+ds), prior=prior,
                 )
                 self.S_D[t] = 0.5 * (self.S_D[t] + self.S_D[t].T)
-        S, A = states.reshape((N*T, ds)), actions.reshape((N*T, da))
-        SA = np.concatenate([S, A], axis=-1)
-
-        # SA = np.concatenate([states, actions], axis=-1)
-        # C = tf.get_variable('cost_mat{}'.format(train_step), shape=[ds+da, ds+da],
-                            # dtype=tf.float32,
-                            # initializer=tf.random_uniform_initializer(minval=-0.1, maxval=0.1))
-        # L = tf.matrix_band_part(C, -1, 0)
-        # L = tf.matrix_set_diag(L, tf.maximum(tf.matrix_diag_part(L), 1e-1))
-        # LL = tf.matmul(L, tf.transpose(L))
-        # c = tf.get_variable('cost_vec{}'.format(train_step), shape=[ds + da],
-                            # dtype=tf.float32, initializer=tf.zeros_initializer())
-        # b = tf.get_variable('cost_bias{}'.format(train_step), shape=[],
-                            # dtype=tf.float32, initializer=tf.zeros_initializer())
-        # s_ = tf.placeholder(tf.float32, [None, ds + da])
-        # c_ = tf.placeholder(tf.float32, [None])
-        # pred_cost = 0.5 * tf.einsum('na,ab,nb->n', s_, LL, s_) + \
-                # tf.einsum('na,a->n', s_, c) + b
-        # mse = tf.reduce_mean(tf.square(pred_cost - c_))
-        # opt = tf.train.GradientDescentOptimizer(1e-4).minimize(mse)
-        # with tf.Session() as sess:
-            # sess.run([C.initializer, c.initializer, b.initializer])
-            # i, perm = 0, np.random.permutation(N)
-            # for itr in tqdm.trange(10000, desc='Fitting cost'):
-                # if i + 1 > N:
-                    # i, perm = 0, np.random.permutation(N)
-                # idx = perm[i]
-                # i += 1
-                # _, m = sess.run([opt, mse], feed_dict={
-                    # s_: SA[idx],
-                    # c_: costs[idx],
-                # })
-                # if itr == 0 or itr == 9999:
-                    # print('mse itr {}: {}'.format(itr, m))
-            # cost_mat, cost_vec = sess.run((LL, c))
-
-            # self.C[:, :ds, :ds] = cost_mat
-            # self.C[:, ds:, ds:] = env.torque_matrix()
-            # self.c[:, :ds] = cost_vec
-        if self.diag_cost:
-            dq, quad = dsa * 2, 0.5 * np.square(SA).reshape((N*T, dsa))
+        self.C = np.zeros([self.ds + self.da, self.ds + self.da])
+        self.c = np.zeros([self.ds + self.da])
+        if self.pd_cost:
+            self.C[:self.ds, :self.ds], self.c[:self.ds] = \
+            util.quadratic_regression_pd(states, costs -
+                                         np.einsum('nta,ab,ntb->nt', actions,
+                                                   self.env.torque_matrix(),
+                                                   actions))
         else:
-            dq = dsa ** 2 + dsa
-            quad = 0.5 * np.einsum('na,nb->nab', SA, SA)
-            quad = quad.reshape((N*T, dsa ** 2))
-        Q, _, _ = util.linear_fit(
-                np.concatenate([
-                    quad, SA, costs.reshape((N*T, 1))
-                ], axis=-1),
-                slice(dq), slice(dq, dq + 1),
-        )
-        if self.diag_cost:
-            self.C = np.tile(np.diag(Q[0, :dsa]), [T, 1, 1])
-            self.c = np.tile(Q[0, dsa:], [T, 1])
-        else:
-            self.C = Q[0, :dsa ** 2].reshape((dsa, dsa))
-            # self.C = np.zeros([dsa, dsa])
-            # self.C[8, 8] = 2
-            # self.C[9, 9] = 2
-            # self.C[11, 11] = 0.1
-            # self.C[12, 12] = 0.1
-            self.C = np.tile((self.C + self.C.T) / 2.0, [T, 1, 1])
-            self.c = np.tile(Q[0, dsa ** 2:], [T, 1])
-            # self.c = np.zeros([T, dsa])
+            self.C[:self.ds, :self.ds], self.c[:self.ds] = \
+            util.quadratic_regression(states, costs -
+                                         0.5 * np.einsum('nta,ab,ntb->nt', actions,
+                                                   self.env.torque_matrix(),
+                                                   actions))
+        self.C[self.ds:, self.ds:] = self.env.torque_matrix()
+        self.c[self.ds:] = np.zeros(self.da)
+
+        print(self.C)
+        print(self.c)
+        self.C = np.tile((self.C + self.C.T) / 2.0, [T, 1, 1])
+        self.c = np.tile(self.c, [T, 1])
 
     def estimate_cost(self):
         mu, sigma = self.forward(self.policy_params)

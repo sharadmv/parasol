@@ -89,9 +89,10 @@ class TrainVAE(Experiment):
         env = self.env
         num_rollouts, init_std = self.data_params['num_rollouts'], self.data_params['init_std']
 
-        def policy(x, _):
-            return np.random.multivariate_normal(mean=np.zeros(env.get_action_dim()),
+        def policy(x, _, noise=None):
+            action = np.random.multivariate_normal(mean=np.zeros(env.get_action_dim()),
                                       cov=np.eye(env.get_action_dim()) *
                                       (init_std**2))
+            return action
         rollouts = env.rollouts(num_rollouts, self.horizon, policy=policy, show_progress=True)
         self.model.train(rollouts, out_dir=out_dir, **self.train_params)

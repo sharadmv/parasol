@@ -119,7 +119,7 @@ class ParasolEnvironment(object):
             n = None
             if noise is not None:
                 n = noise[t]
-                actions[t] = policy(states[t], t, noise=n)
+            actions[t] = policy(states[t], t, noise=n)
             current_state, costs[t], done, info = self.step(actions[t])
             for k, v in info.items():
                 infos[k].append(v)

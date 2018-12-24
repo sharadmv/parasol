@@ -2,7 +2,7 @@ import pickle
 import tensorflow as tf
 import numpy as np
 import tqdm
-from deepx import T
+from deepx import T, stats
 
 from parasol import util
 from parasol.prior import Normal, NNDS, LDS, BayesianLDS, NoPrior
@@ -25,7 +25,7 @@ class VAE(Model):
                  ds, da,
                  state_encoder, state_decoder,
                  action_encoder, action_decoder,
-                 prior):
+                 prior, smooth=False):
         super(VAE, self).__init__(do, du, horizon)
         self.ds, self.da = ds, da
         self.state_encoder = state_encoder
@@ -35,6 +35,7 @@ class VAE(Model):
         self.prior_params = prior
         if self.prior_params is None:
             self.prior_params = {'prior_type': 'none'}
+        self.smooth = smooth
         self.initialize()
 
     def initialize(self):
@@ -109,7 +110,7 @@ class VAE(Model):
             else:
                 self.dynamics_op = T.core.no_op()
             self.train_op = T.core.group(self.neural_op, self.dynamics_op)
-        self.session = T.interactive_session(graph=self.graph)
+        self.session = T.interactive_session(graph=self.graph, allow_soft_placement=True,log_device_placement=True)
 
     def make_summaries(self, env):
         with self.graph.as_default():

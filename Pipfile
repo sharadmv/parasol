@@ -20,13 +20,13 @@ seaborn = "*"
 pygame = "*"
 sklearn = "*"
 notebook = ">=5.7.2"
-deepx = "==0.4.7"
 kfac = "*"
 fabric = "*"
 "boto3" = "*"
 pandas = "*"
 gps = {git = "https://github.com/sharadmv/gps.git",editable = true}
 click = "*"
+deepx = "==0.4.8"
 
 [requires]
 python_version = "3.6"

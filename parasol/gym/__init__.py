@@ -1,9 +1,9 @@
 import contextlib
 with contextlib.redirect_stdout(None):
     from .mujoco import Reacher, Pointmass
-    from .basic import SimpleCar
+    from .basic import SimpleCar, Pendulum
 
-ENVS = [Reacher, Pointmass, SimpleCar]
+ENVS = [Reacher, Pointmass, SimpleCar, Pendulum]
 
 ENV_MAP = { env.environment_name : env for env in ENVS }
 

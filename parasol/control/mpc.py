@@ -7,8 +7,7 @@ class MPC(Controller):
 
     control_type = 'mpc'
 
-    def __init__(self, model, horizon,
-                 num_rollouts=100,
+    def __init__(self, model, env, horizon,
                  diag_cost=False,
                  action_min=-1.0, action_max=1.0):
         self.model = model
@@ -17,7 +16,6 @@ class MPC(Controller):
         self.do, self.du = self.model.do, self.model.du
         self.horizon = horizon
         self.diag_cost = diag_cost
-        self.num_rollouts = num_rollouts
         self.action_min, self.action_max = action_min, action_max
 
         self.C = np.zeros([self.ds + self.da, self.ds + self.da])

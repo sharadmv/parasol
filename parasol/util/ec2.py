@@ -21,18 +21,36 @@ gfile = tf.gfile
 
 PEM_FILE = os.path.expanduser("~/.aws/umbrellas.pem")
 
-COMMAND = "from parasol.experiment import from_json; from_json(\\\"%s\\\").run()"
+COMMAND = """
+from parasol.experiment import from_json;
+from_json('%s').run()
+"""
 
-def run_remote(params_path, gpu=False, instance_type='m5.large', ami='ami-0f5590d8f5e04a317', spot_price=0.3):
+GPU_COMMAND = """
+from deepx import T
+T.set_default_device(T.gpu())
+from parasol.experiment import from_json;
+with T.device(T.gpu()):
+    from_json('%s').run()
+"""
+
+def run_remote(params_path, gpu=False, instance_type='m5.large', ami='ami-099861d56e0a28b23', spot_price=0.5):
+    command = COMMAND % params_path
+    if gpu:
+        ami = 'ami-040e9e9e43b8e7d59'
+        instance_type = 'g3.4xlarge'
+        spot_price = 0.5
+        command = GPU_COMMAND % params_path
     instance = request_instance(instance_type, ami, spot_price, params_path)
     with create_parasol_zip() as parasol_zip, Connection(instance, user="ubuntu", connect_kwargs={
         "key_filename": PEM_FILE
     }) as conn:
+        print("Running remote experiment...")
         conn.put(parasol_zip)
         conn.run("mkdir parasol; unzip -o parasol.zip -d parasol; rm parasol.zip", hide='stdout')
         conn.run("PIPENV_YES=1 pipenv run python setup.py develop", hide='stdout')
-        command = COMMAND % params_path
-        conn.run("tmux new-session -d -s 'experiment' \"pipenv run python -c '%s'; sudo poweroff\"" % command)
+        conn.run("echo \"%s\" > run.py" % command, hide='stdout')
+        conn.run("tmux new-session -d -s 'experiment' \"pipenv run python run.py; sudo poweroff\"")
 
 @contextmanager
 def create_parasol_zip():
@@ -123,5 +141,6 @@ def request_instance(instance_type, ami, spot_price, instance_name):
         ]
     )
     url = get_instance_url(instance_id)
+    print('Instance IP:', url)
     wait_on_ssh(url)
     return url

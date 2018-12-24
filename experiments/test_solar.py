@@ -1,32 +1,28 @@
-import numpy as np
-np.set_printoptions(suppress=True, precision=4, linewidth=120)
 from parasol.experiment import run, sweep
 
 experiment = dict(
     experiment_type='solar',
-    experiment_name='reacher-lqrflm',
+    experiment_name='pendulum-lqrflm',
     env={
-        "environment_name": "Reacher",
-        "random_start": False,
-        "random_target": False,
+        "environment_name": "Pendulum",
     },
     control={
         'control_type': 'lqrflm',
         'prior_type': 'gmm',
-        'horizon': 50,
-        'init_std': sweep([0.3, 0.5]),
-        'kl_step': sweep([0.1, 1])
+        'horizon': 100,
+        'init_std': 5,
+        'kl_step': 0.1,
     },
-    # model='s3://parasol-experiments/vae/reacher-noimage/blds/weights/model-final.pkl',
+    # model='s3://parasol-experiments/vae/reacher-image/reacher-image_model{prior{prior_type}}-blds/weights/model-1700.pkl',
     model=None,
-    horizon=50,
+    horizon=100,
     seed=0,
-    rollouts_per_iter=sweep([20, 50]),
-    num_iters=10,
-    num_videos=5,
-    out_dir='s3://parasol-experiments/solar/sweep-test',
+    rollouts_per_iter=100,
+    num_iters=20,
+    num_videos=2,
+    out_dir='out/solar/pendulum',
     model_train={
         'num_epochs': 0
     }
 )
-run(experiment, remote=True)
+run(experiment, remote=False, num_threads=1, instance_type='m5.4xlarge')

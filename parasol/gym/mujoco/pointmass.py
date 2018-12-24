@@ -27,7 +27,7 @@ class GymPointmass(mujoco_env.MujocoEnv, utils.EzPickle):
     def reward(self, action):
         pos, target = self.position, self.goal
         dist = np.square(pos - target).sum()
-        return (dist + 1e-3 * np.square(action).sum()), {
+        return -(dist + 1e-3 * np.square(action).sum()), {
             "distance" : np.sqrt(dist)
         }
 

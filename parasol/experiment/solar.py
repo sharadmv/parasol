@@ -36,7 +36,6 @@ class Solar(Experiment):
         self.rollouts_per_iter = rollouts_per_iter
         self.num_iters = num_iters
         self.model_train_params = model_train
-        self.initialize_params()
 
     def initialize(self, out_dir):
         if not gfile.Exists(out_dir / "tb"):
@@ -47,6 +46,7 @@ class Solar(Experiment):
             gfile.MakeDirs(out_dir / "policy")
         if not gfile.Exists(out_dir / "videos"):
             gfile.MakeDirs(out_dir / "videos")
+        self.initialize_params()
 
     def initialize_params(self):
         if self.model_path is not None:
@@ -55,7 +55,7 @@ class Solar(Experiment):
         else:
             self.model = parasol.model.NoModel(self.env.get_state_dim(),
                                                self.env.get_action_dim(), self.horizon)
-        self.control = parasol.control.from_config(self.model, self.control_params)
+        self.control = parasol.control.from_config(self.model, self.control_params, self.env)
 
     def to_dict(self):
         return {
@@ -65,6 +65,7 @@ class Solar(Experiment):
             'seed': self.seed,
             'env': self.env_params.copy(),
             'control': self.control_params.copy(),
+            'horizon': self.horizon,
             'model': self.model_path,
             'model_train': self.model_train_params,
             'out_dir': self.out_dir,
@@ -85,6 +86,7 @@ class Solar(Experiment):
             num_videos=params['num_videos'],
             num_iters=params['num_iters'],
             model_train=params['model_train'],
+            horizon=params['horizon'],
             rollouts_per_iter=params['rollouts_per_iter']
         )
 

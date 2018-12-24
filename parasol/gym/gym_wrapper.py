@@ -30,13 +30,13 @@ class GymWrapper(ParasolEnvironment):
 
     def step(self, action):
         self.state, reward, done, info = self.gym_env.step(action)
-        return self.observe(), reward, done, info
+        return self.observe(), -reward, done, info
 
     def _observe(self):
         return self.state
 
     def render(self, mode='human'):
-        self.gym_env.render(mode='rgb_array')
+        return self.gym_env.render(mode=mode)
 
     def state_dim(self):
         return self.gym_env.observation_space.shape[0]
