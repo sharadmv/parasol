@@ -76,7 +76,7 @@ class VAE(Model):
             self.q_O__sample = self.q_O_.sample()[0]
             self.q_U__sample = self.q_U_.sample()[0]
 
-            prior_kl, kl_grads = self.prior.kl_and_grads(q_S, q_A, self.num_data)
+            prior_kl, kl_grads, info = self.prior.kl_and_grads(q_S, q_A, self.num_data)
 
             log_likelihood = T.sum(q_O.log_likelihood(self.O), axis=1)
 
@@ -87,7 +87,15 @@ class VAE(Model):
             T.core.summary.scalar("beta", self.beta)
             T.core.summary.scalar("elbo", elbo)
             T.core.summary.scalar("beta-elbo", train_elbo)
+            for k, v in info.items():
+                T.core.summary.scalar(k, T.mean(v))
             self.summary = T.core.summary.merge_all()
+            neural_params = (
+                self.state_encoder.get_parameters()
+                + self.state_decoder.get_parameters()
+                + self.action_encoder.get_parameters()
+                + self.action_decoder.get_parameters()
+            )
             neural_params = (
                 self.state_encoder.get_parameters()
                 + self.state_decoder.get_parameters()
@@ -110,7 +118,7 @@ class VAE(Model):
             else:
                 self.dynamics_op = T.core.no_op()
             self.train_op = T.core.group(self.neural_op, self.dynamics_op)
-        self.session = T.interactive_session(graph=self.graph, allow_soft_placement=True,log_device_placement=True)
+        self.session = T.interactive_session(graph=self.graph, allow_soft_placement=True, log_device_placement=False)
 
     def make_summaries(self, env):
         with self.graph.as_default():
@@ -133,7 +141,7 @@ class VAE(Model):
         if out_dir is None:
             writer = None
         else:
-            writer = T.core.summary.FileWriter(out_dir / "tb")
+            writer = T.core.summary.FileWriter(out_dir / "tb", graph=self.graph)
         global_iter = 0
         for epoch in tqdm.trange(num_epochs, desc='Training'):
             if dump_every is not None and epoch % dump_every == 0:

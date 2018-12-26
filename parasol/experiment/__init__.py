@@ -37,11 +37,11 @@ def expand_params(params):
                         yield new_params, [('%s{%s}' % (k, a), b) for a, b in exps] + expansions
                 return
         if isinstance(v, sweep):
-            for v_ in v:
+            for v_, name in v:
                 params_ = params.copy()
                 params_[k] = v_
                 for new_params, expansions in expand_params(params_):
-                    yield new_params, expansions + [(k, v_)]
+                    yield new_params, expansions + [(k, name)]
             return
     yield params, []
 

@@ -12,8 +12,8 @@ class Normal(Prior):
 
     def kl_and_grads(self, q_X, q_A, num_data):
         params = self.get_parameters()
-        kl = self.kl_divergence(q_X, q_A, num_data)
-        return kl, list(zip(params, T.grad(T.mean(kl, axis=0), params)))
+        kl, info = self.kl_divergence(q_X, q_A, num_data)
+        return kl, list(zip(params, T.grad(T.mean(kl, axis=0), params))), info
 
     def kl_divergence(self, q_X, q_A, num_data):
         mu_shape = T.shape(q_X.get_parameters('regular')[1])
@@ -21,7 +21,8 @@ class Normal(Prior):
             T.eye(self.ds, batch_shape=mu_shape[:-1]),
             T.zeros(mu_shape)
         ])
-        return T.sum(stats.kl_divergence(q_X, p_X), -1)
+        encoder_stdev = T.sqrt(T.core.matrix_diag_part(q_X.get_parameters('regular')[0]))
+        return T.mean(T.sum(stats.kl_divergence(q_X, p_X), -1), 0), {'encoder-stdev': encoder_stdev}
 
     def has_dynamics(self):
         return False

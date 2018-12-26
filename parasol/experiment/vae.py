@@ -7,7 +7,7 @@ import deepx
 from deepx import T, stats
 import parasol.gym as gym
 import parasol.util as util
-from tensorflow import gfile
+import tensorflow.gfile as gfile
 
 from parasol.model import VAE
 
@@ -31,6 +31,7 @@ class TrainVAE(Experiment):
                  batch_size=20,
                  prior=None,
                  dump_every=None,
+                 dump_data=True,
                  summary_every=1000,
                  beta_start=0.0, beta_rate=1e-4,
                  beta_end=1.0, **kwargs):
@@ -40,6 +41,7 @@ class TrainVAE(Experiment):
         self.train_params = train
         self.data_params = data
         self.seed = seed
+        self.dump_data = dump_data
         self.horizon = horizon = model['horizon']
         self.model = VAE(
             **model
@@ -54,14 +56,17 @@ class TrainVAE(Experiment):
             gfile.MakeDirs(out_dir / "weights")
         if not gfile.Exists(out_dir / "weights"):
             gfile.MakeDirs(out_dir / "weights")
+        if not gfile.Exists(out_dir / "data"):
+            gfile.MakeDirs(out_dir / "data")
 
     def to_dict(self):
         return {
             "seed": self.seed,
             "out_dir": self.out_dir,
-            "environment": self.env_params,
+            "env": self.env_params,
             "experiment_name": self.experiment_name,
             "experiment_type": self.experiment_type,
+            "dump_data": self.dump_data,
             "model": self.model_params.copy(),
             "data": self.data_params.copy(),
             "train": self.train_params.copy(),
@@ -71,11 +76,12 @@ class TrainVAE(Experiment):
     def from_dict(cls, params):
         return TrainVAE(
             params['experiment_name'],
-            params['environment'],
+            params['env'],
             params['model'],
             data=params['data'],
             train=params['train'],
             seed=params['seed'],
+            dump_data=params['dump_data'],
             out_dir=params['out_dir']
         )
 
@@ -95,4 +101,7 @@ class TrainVAE(Experiment):
                                       (init_std**2))
             return action
         rollouts = env.rollouts(num_rollouts, self.horizon, policy=policy, show_progress=True)
+        if self.dump_data:
+            with gfile.GFile(out_dir / "data" / "rollouts.pkl", 'wb') as fp:
+                pickle.dump(rollouts, fp)
         self.model.train(rollouts, out_dir=out_dir, **self.train_params)

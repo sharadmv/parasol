@@ -16,8 +16,8 @@ class Prior(object):
 
     def kl_and_grads(self, q_X, q_A, num_data):
         params = self.get_parameters()
-        kl = self.kl_divergence(q_X, q_A, num_data)
-        return kl, list(zip(params, T.grad(T.mean(kl, axis=0), params)))
+        kl, info = self.kl_divergence(q_X, q_A, num_data)
+        return kl, list(zip(params, T.grad(kl, params))), info
 
     def has_natural_gradients(self):
         return False
@@ -48,8 +48,8 @@ class Dynamics(Prior):
 
     def kl_and_grads(self, q_X, q_A, num_data):
         params = self.get_parameters()
-        kl = self.kl_divergence(q_X, q_A, num_data)
-        return kl, list(zip(params, T.grad(T.mean(kl, axis=0), params)))
+        kl, info = self.kl_divergence(q_X, q_A, num_data)
+        return kl, list(zip(params, T.grad(kl, params))), info
 
     def has_dynamics(self):
         return True

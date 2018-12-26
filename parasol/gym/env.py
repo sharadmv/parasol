@@ -100,7 +100,8 @@ class ParasolEnvironment(object):
     def rollout(self, num_steps, policy = None, render = False, show_progress =
                 False, init_std=1, noise=None):
         if policy is None:
-            policy = lambda x, t: np.random.normal(size=self.get_action_dim(), scale=init_std)
+            def policy(x, t, noise=None):
+                return np.random.normal(size=self.get_action_dim(), scale=init_std)
         states, actions, costs = (
             np.empty([num_steps] + [self.get_state_dim()]),
             np.empty([num_steps] + [self.get_action_dim()]),
