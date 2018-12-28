@@ -43,9 +43,15 @@ class TrainVAE(Experiment):
         self.seed = seed
         self.dump_data = dump_data
         self.horizon = horizon = model['horizon']
-        self.model = VAE(
-            **model
-        )
+
+        if 'model_path' in self.model_params:
+            with gfile.GFile(self.model_params['model_path'], 'rb') as fp:
+                self.model = pickle.load(fp)
+        else:
+            self.model = VAE(
+                **model
+            )
+            
         self.env = gym.from_config(self.env_params)
         self.model.make_summaries(self.env)
 
