@@ -1,3 +1,4 @@
+import copy
 import pickle
 import tensorflow as tf
 import numpy as np
@@ -28,10 +29,10 @@ class VAE(Model):
                  prior, smooth=False):
         super(VAE, self).__init__(do, du, horizon)
         self.ds, self.da = ds, da
-        self.state_encoder = state_encoder
-        self.state_decoder = state_decoder
-        self.action_encoder = action_encoder
-        self.action_decoder = action_decoder
+        self.state_encoder = copy.deepcopy(state_encoder)
+        self.state_decoder = copy.deepcopy(state_decoder)
+        self.action_encoder = copy.deepcopy(action_encoder)
+        self.action_decoder = copy.deepcopy(action_decoder)
         self.prior_params = prior
         if self.prior_params is None:
             self.prior_params = {'prior_type': 'none'}
@@ -58,6 +59,7 @@ class VAE(Model):
             self.num_data = T.scalar()
             self.beta = T.placeholder(T.floatx(), [])
             self.learning_rate = T.placeholder(T.floatx(), [])
+            self.model_learning_rate = T.placeholder(T.floatx(), [])
 
             batch_size = T.shape(self.O)[0]
 
@@ -109,10 +111,10 @@ class VAE(Model):
                 self.neural_op = T.core.no_op()
             if len(kl_grads) > 0:
                 if self.prior.has_natural_gradients():
-                    opt = T.core.train.GradientDescentOptimizer
+                    opt = lambda x: T.core.train.MomentumOptimizer(x, 0.5)
                 else:
                     opt = T.core.train.AdamOptimizer
-                self.dynamics_op = opt(self.learning_rate).apply_gradients([
+                self.dynamics_op = opt(self.model_learning_rate).apply_gradients([
                     (b, a) for a, b in kl_grads
                 ])
             else:
@@ -133,9 +135,13 @@ class VAE(Model):
               num_epochs=100,
               batch_size=50,
               learning_rate=1e-4,
+              model_learning_rate=None,
               dump_every=None, summary_every=1000,
+              beta_increase=0,
               beta_start=0.0, beta_rate=1e-4, beta_end=1.0):
         beta = beta_start
+        if model_learning_rate is None:
+            model_learning_rate = learning_rate
         O, U = rollouts[0], rollouts[1]
         N = O.shape[0]
         if out_dir is None:
@@ -157,6 +163,7 @@ class VAE(Model):
                         self.beta: beta,
                         self.num_data: N,
                         self.learning_rate: learning_rate,
+                        self.model_learning_rate: model_learning_rate,
                     })
                     if writer is not None:
                         writer.add_summary(summary, global_iter)
@@ -168,9 +175,11 @@ class VAE(Model):
                         self.beta: beta,
                         self.num_data: N,
                         self.learning_rate: learning_rate,
+                        self.model_learning_rate: model_learning_rate,
                     })
                 global_iter += 1
-                beta = min(beta_end, beta + beta_rate)
+                if epoch >= beta_increase:
+                    beta = min(beta_end, beta + beta_rate)
         if writer is not None:
             writer.flush()
         self.dump_weights("final", out_dir)
@@ -184,7 +193,6 @@ class VAE(Model):
         state['action_encoder'] = self.action_encoder
         state['action_decoder'] = self.action_decoder
         state['prior_params'] = self.prior_params
-
         state['weights'] = self.get_weights()
         return state
 

@@ -51,6 +51,9 @@ class BayesianLDS(LDS):
                 T.tile(Q[None], [self.horizon - 1, 1, 1]),
             )
 
+    def sufficient_statistics(self):
+        return self.A_variational.expected_sufficient_statistics()
+
     def has_natural_gradients(self):
         return True
 
@@ -126,7 +129,7 @@ class BayesianLDS(LDS):
                 global_kl = stats.kl_divergence(self.A_variational, self.A_prior)
             self.cache[(q_X, q_A)] = (
                 local_kl + global_kl / T.to_float(num_data),
-                {'rmse': rmse, 'encoding-stdev': encoding_stdev, 'model-stdev': model_stdev,
+                {'rmse': rmse, 'encoder-stdev': encoding_stdev, 'model-stdev': model_stdev,
                  'local-kl': local_kl, 'global-kl': global_kl}
             )
         return self.cache[(q_X, q_A)]

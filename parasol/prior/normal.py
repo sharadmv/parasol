@@ -13,7 +13,7 @@ class Normal(Prior):
     def kl_and_grads(self, q_X, q_A, num_data):
         params = self.get_parameters()
         kl, info = self.kl_divergence(q_X, q_A, num_data)
-        return kl, list(zip(params, T.grad(T.mean(kl, axis=0), params))), info
+        return kl, list(zip(params, T.grad(kl, params))), info
 
     def kl_divergence(self, q_X, q_A, num_data):
         mu_shape = T.shape(q_X.get_parameters('regular')[1])

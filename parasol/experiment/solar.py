@@ -23,6 +23,7 @@ class Solar(Experiment):
                  num_videos=1,
                  rollouts_per_iter=100,
                  num_iters=10,
+                 buffer_size=None,
                  model_train={},
                  **kwargs):
         super(Solar, self).__init__(experiment_name, **kwargs)
@@ -34,6 +35,7 @@ class Solar(Experiment):
         self.seed = seed
         self.num_videos = num_videos
         self.rollouts_per_iter = rollouts_per_iter
+        self.buffer_size = buffer_size if buffer_size is not None else rollouts_per_iter
         self.num_iters = num_iters
         self.model_train_params = model_train
 
@@ -69,6 +71,7 @@ class Solar(Experiment):
             'model': self.model_path,
             'model_train': self.model_train_params,
             'out_dir': self.out_dir,
+            'buffer_size': self.buffer_size,
             'rollouts_per_iter': self.rollouts_per_iter,
             'num_videos': self.num_videos,
             'num_iters': self.num_iters,
@@ -85,6 +88,7 @@ class Solar(Experiment):
             seed=params['seed'],
             num_videos=params['num_videos'],
             num_iters=params['num_iters'],
+            buffer_size=params['buffer_size'],
             model_train=params['model_train'],
             horizon=params['horizon'],
             rollouts_per_iter=params['rollouts_per_iter']
@@ -101,6 +105,8 @@ class Solar(Experiment):
                                     smooth=False)
             return n
 
+        replay_buffer = None
+
         for i in range(self.num_iters):
             def video_callback(j):
                 if j < self.num_videos:
@@ -112,8 +118,13 @@ class Solar(Experiment):
                                             callback=video_callback,
                                             noise=noise_function,
                                             show_progress=True)
-            self.control.train(rollouts, i, out_dir=out_dir)
-            self.model.train(rollouts, out_dir=out_dir, **self.model_train_params)
+            if replay_buffer is None:
+                replay_buffer = rollouts
+            else:
+                replay_buffer = tuple(map(np.concatenate, zip(replay_buffer, rollouts)))
+            replay_buffer = tuple(r[-self.buffer_size:] for r in replay_buffer)
+            self.control.train(replay_buffer, i, out_dir=out_dir)
+            self.model.train(replay_buffer, out_dir=out_dir, **self.model_train_params)
 
         def video_callback(j):
             if j < self.num_videos:

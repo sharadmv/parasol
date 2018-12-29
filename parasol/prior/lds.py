@@ -24,6 +24,17 @@ class LDS(Dynamics):
             self.Q_log_diag = T.variable(T.random_normal([ds]) - 3)
             self.Q = T.matrix_diag(T.exp(self.Q_log_diag))
 
+    def sufficient_statistics(self):
+        A, Q = self.get_dynamics()
+        Q_inv = T.matrix_inverse(Q)
+        Q_inv_A = T.matrix_solve(Q, A)
+        return [
+            -0.5 * Q_inv,
+            Q_inv_A,
+            -0.5 * T.einsum('hba,hbc->hac', A, Q_inv_A),
+            -0.5 * T.logdet(Q)
+        ]
+
     def forward(self, q_Xt, q_At):
         Xt, At = q_Xt.expected_value(), q_At.expected_value()
         batch_size = T.shape(Xt)[0]
@@ -92,7 +103,7 @@ class LDS(Dynamics):
             rmse = T.sqrt(T.sum(T.square(q_Xt1.get_parameters('regular')[1] - p_Xt1.get_parameters('regular')[1]), axis=-1))
             model_stdev = T.sqrt(T.core.matrix_diag_part(p_Xt1.get_parameters('regular')[0]))
             encoding_stdev = T.sqrt(T.core.matrix_diag_part(q_Xt1.get_parameters('regular')[0]))
-            self.cache[(q_X, q_A)] = T.mean(T.sum(stats.kl_divergence(q_Xt1, p_Xt1), axis=-1), axis=0), {'rmse': rmse, 'encoding-stdev': encoding_stdev, 'model-stdev': model_stdev}
+            self.cache[(q_X, q_A)] = T.mean(T.sum(stats.kl_divergence(q_Xt1, p_Xt1), axis=-1), axis=0), {'rmse': rmse, 'encoder-stdev': encoding_stdev, 'model-stdev': model_stdev}
         return self.cache[(q_X, q_A)]
 
     def next_state(self, state, action, t):
