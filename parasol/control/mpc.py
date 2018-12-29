@@ -26,14 +26,14 @@ class MPC(Controller):
     def act(self, obs, t, noise=None):
         state, _ = self.model.encode(obs, np.zeros(self.model.du))
         horizon = min(self.horizon, self.model.horizon - t)
-        ret = self.cem_opt(state, horizon, iters=10)
+        action = self.cem_opt(state, horizon, iters=10)
         if noise is not None:
-            ret += noise*.01
-        return ret
+            action += noise * 0.01
+        return action
 
     def cem_opt(self, state, horizon, iters=1):
         mu = np.zeros((horizon,self.da))
-        sigma = .2*np.ones((horizon, self.da))
+        sigma = 0.2 * np.ones((horizon, self.da))
         for i in range(iters):
             states, actions = self.sim_actions_forward(state, horizon, mu, sigma)
             costs = self.eval_traj_costs(states, actions)
@@ -57,7 +57,7 @@ class MPC(Controller):
     def eval_traj_costs(self, states, actions):
         costs = np.zeros(states.shape[0])
         for t in range(states.shape[1]):
-            costs += self.env.cost_fn(states[:,t], actions[:,t])
+            costs += self.env.cost_fn(states[:, t], actions[:, t])
         return costs
 
     def train(self, rollouts, train_step, out_dir=None):

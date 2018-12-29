@@ -44,14 +44,13 @@ class TrainVAE(Experiment):
         self.dump_data = dump_data
         self.horizon = horizon = model['horizon']
 
-        if 'model_path' in self.model_params:
-            with gfile.GFile(self.model_params['model_path'], 'rb') as fp:
+        if 'load_model' in self.model_params:
+            with gfile.GFile(self.model_params['load_model'], 'rb') as fp:
                 self.model = pickle.load(fp)
         else:
             self.model = VAE(
                 **model
             )
-            
         self.env = gym.from_config(self.env_params)
         self.model.make_summaries(self.env)
 
@@ -98,8 +97,8 @@ class TrainVAE(Experiment):
         np.random.seed(self.seed)
         random.seed(self.seed)
 
-        if 'filepath' in self.data_params:
-            with gfile.GFile(self.data_params['filepath'], 'rb') as fp:
+        if 'load_data' in self.data_params:
+            with gfile.GFile(self.data_params['load_data'], 'rb') as fp:
                 rollouts = pickle.load(fp)
         else:
             env = self.env
