@@ -136,3 +136,9 @@ class Pointmass(GymWrapper):
     def image_size(self):
         return [self.image_dim, self.image_dim, 2]
 
+    def cost_fn(self, s, a):
+        pos, target = s[:,:2], s[:,-2:]
+        dist = np.sum(np.square(pos - target), axis=-1) 
+        ctrl = np.sum(np.square(a), axis=-1)
+        return dist + 1e-3*ctrl
+

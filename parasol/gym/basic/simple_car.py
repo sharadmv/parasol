@@ -202,3 +202,8 @@ class SimpleCar(ParasolEnvironment):
 
     def stop_recording(self):
         self.image_encoder.close()
+
+    def cost_fn(self, s, a):
+        agent = s[:,:2]
+        target = s[:,-2:]
+        return np.sum(np.square(agent - target), axis=-1) + 0.5 * 1e-8 * np.sum(np.square(a), axis=-1)
