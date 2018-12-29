@@ -10,7 +10,7 @@ class MPC(Controller):
 
     def __init__(self, model, env, horizon,
                  diag_cost=False,
-                 action_min=-1.0, action_max=1.0):
+                 action_min=-1.0, action_max=1.0, sample_std=1.0):
         self.model = model
         self.horizon = horizon
         self.ds, self.da = self.model.ds, self.model.da
@@ -26,7 +26,10 @@ class MPC(Controller):
     def act(self, obs, t, noise=None):
         state, _ = self.model.encode(obs, np.zeros(self.model.du))
         horizon = min(self.horizon, self.model.horizon - t)
-        return self.cem_opt(state, horizon, iters=10)
+        ret = self.cem_opt(state, horizon, iters=10)
+        if noise is not None:
+            ret += noise*.01
+        return ret
 
     def cem_opt(self, state, horizon, iters=1):
         mu = np.zeros((horizon,self.da))
@@ -54,10 +57,7 @@ class MPC(Controller):
     def eval_traj_costs(self, states, actions):
         costs = np.zeros(states.shape[0])
         for t in range(states.shape[1]):
-            # SPECIFIC TO REACHER
-            at = actions[:,t]
-            st = states[:,t]
-            costs += np.linalg.norm(st[:,-3:], axis=-1) + np.sum(np.square(at), axis=-1)
+            costs += self.env.cost_fn(states[:,t], actions[:,t])
         return costs
 
     def train(self, rollouts, train_step, out_dir=None):

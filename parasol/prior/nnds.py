@@ -26,7 +26,7 @@ class NNDS(Dynamics):
         if isinstance(p_Xt1, stats.Gaussian):
             sigma = T.reshape(p_Xt1.get_parameters('regular')[0], T.concatenate([leading_dim, [ds, ds]]))
             delta_mu = T.reshape(p_Xt1.get_parameters('regular')[1], T.concatenate([leading_dim, [ds]]))
-            mu = np.add(q_Xt.get_parameters('regular')[1], delta_mu)
+            mu = q_Xt.get_parameters('regular')[1] + delta_mu
             return stats.Gaussian([
                 sigma,
                 mu,
@@ -80,7 +80,7 @@ class NNDS(Dynamics):
         sigma, delta_mu = self.network(state_action).get_parameters('regular')
         return stats.Gaussian([
             sigma,
-            np.add(delta_mu, state),
+            delta_mu + state,
         ])
 
 
