@@ -122,4 +122,7 @@ class Reacher(GymWrapper):
         if self.image:
             return [self.image_dim, self.image_dim, 3]
         return None
+    
+    def cost_fn(self, s, a):
+        return np.linalg.norm(s[:,-3:], axis=-1) + np.sum(np.square(a), axis=-1)
 

@@ -43,9 +43,15 @@ class TrainVAE(Experiment):
         self.seed = seed
         self.dump_data = dump_data
         self.horizon = horizon = model['horizon']
-        self.model = VAE(
-            **model
-        )
+
+        if 'model_path' in self.model_params:
+            with gfile.GFile(self.model_params['model_path'], 'rb') as fp:
+                self.model = pickle.load(fp)
+        else:
+            self.model = VAE(
+                **model
+            )
+            
         self.env = gym.from_config(self.env_params)
         self.model.make_summaries(self.env)
 
@@ -92,15 +98,19 @@ class TrainVAE(Experiment):
         np.random.seed(self.seed)
         random.seed(self.seed)
 
-        env = self.env
-        num_rollouts, init_std = self.data_params['num_rollouts'], self.data_params['init_std']
+        if 'filepath' in self.data_params:
+            with gfile.GFile(self.data_params['filepath'], 'rb') as fp:
+                rollouts = pickle.load(fp)
+        else:
+            env = self.env
+            num_rollouts, init_std = self.data_params['num_rollouts'], self.data_params['init_std']
 
-        def policy(x, _, noise=None):
-            action = np.random.multivariate_normal(mean=np.zeros(env.get_action_dim()),
-                                      cov=np.eye(env.get_action_dim()) *
-                                      (init_std**2))
-            return action
-        rollouts = env.rollouts(num_rollouts, self.horizon, policy=policy, show_progress=True)
+            def policy(x, _, noise=None):
+                action = np.random.multivariate_normal(mean=np.zeros(env.get_action_dim()),
+                                          cov=np.eye(env.get_action_dim()) *
+                                          (init_std**2))
+                return action
+            rollouts = env.rollouts(num_rollouts, self.horizon, policy=policy, show_progress=True)
         if self.dump_data:
             with gfile.GFile(out_dir / "data" / "rollouts.pkl", 'wb') as fp:
                 pickle.dump(rollouts, fp)

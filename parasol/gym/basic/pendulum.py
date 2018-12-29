@@ -138,3 +138,10 @@ class Pendulum(GymWrapper):
 
     def stop_recording(self):
         self.image_encoder.close()
+
+    def cost_fn(self, s, a):
+        cos_th, sin_th = s[:,0], s[:,1]
+        th = np.arctan2(sin_th, cos_th)
+
+        thdot = s[:,2]
+        return angle_normalize(th)**2 + .1*thdot**2 + .001*(np.squeeze(a)**2)

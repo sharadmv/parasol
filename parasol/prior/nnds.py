@@ -24,9 +24,12 @@ class NNDS(Dynamics):
         XAt = T.concatenate([Xt, At], -1)
         p_Xt1 = self.network(XAt)
         if isinstance(p_Xt1, stats.Gaussian):
+            sigma = T.reshape(p_Xt1.get_parameters('regular')[0], T.concatenate([leading_dim, [ds, ds]]))
+            delta_mu = T.reshape(p_Xt1.get_parameters('regular')[1], T.concatenate([leading_dim, [ds]]))
+            mu = q_Xt.get_parameters('regular')[1] + delta_mu
             return stats.Gaussian([
-                T.reshape(p_Xt1.get_parameters('regular')[0], T.concatenate([leading_dim, [ds, ds]])),
-                T.reshape(p_Xt1.get_parameters('regular')[1], T.concatenate([leading_dim, [ds]])),
+                sigma,
+                mu,
             ])
         else:
             raise Exception()
@@ -74,4 +77,11 @@ class NNDS(Dynamics):
 
     def next_state(self, state, action, t):
         state_action = T.concatenate([state, action], -1)
-        return self.network(state_action)
+        sigma, delta_mu = self.network(state_action).get_parameters('regular')
+        return stats.Gaussian([
+            sigma,
+            delta_mu + state,
+        ])
+
+
+        

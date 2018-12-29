@@ -64,6 +64,9 @@ class ParasolEnvironment(object):
     def action_dim(self):
         pass
 
+    def cost_fn(self, s, a):
+        return np.zeros(s.shape[0])
+
     def get_state_dim(self):
         return self.state_dim() * (1 + self.sliding_window)
 
