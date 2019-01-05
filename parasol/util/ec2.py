@@ -34,10 +34,10 @@ with T.device(T.gpu()):
     from_json('%s').run()
 """
 
-def run_remote(params_path, gpu=False, instance_type='m5.large', ami='ami-099861d56e0a28b23', spot_price=0.5):
+def run_remote(params_path, gpu=False, instance_type='m5.large', ami='ami-0e3a4bae76a75fd3b', spot_price=0.5):
     command = COMMAND % params_path
     if gpu:
-        ami = 'ami-040e9e9e43b8e7d59'
+        ami = 'ami-0631e8abbfc486a1d'
         instance_type = 'g3.4xlarge'
         spot_price = 0.5
         command = GPU_COMMAND % params_path

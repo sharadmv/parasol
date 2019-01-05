@@ -72,23 +72,22 @@ class BayesianLDS(LDS):
     def kl_gradients(self, q_X, q_A, _, num_data):
         if self.smooth:
             ds = self.ds
-            stats = q_X.expected_sufficient_statistics()
-            yyT = stats[..., :-1, ds:2*ds, ds:2*ds]
-            xxT = stats[..., :-1, :ds, :ds]
-            yxT = stats[..., :-1, ds:2*ds, :ds]
-            a = q_A.expected_value()[:, :-1]
-            aaT = T.outer(a, a)
-            x = stats[..., :-1, -1, :ds]
-            y = stats[..., :-1, -1, ds:2*ds]
+            ess = q_X.expected_sufficient_statistics()
+            yyT = ess[..., :-1, ds:2*ds, ds:2*ds]
+            xxT = ess[..., :-1, :ds, :ds]
+            yxT = ess[..., :-1, ds:2*ds, :ds]
+            aaT, a = stats.Gaussian.unpack(q_A.expected_sufficient_statistics())
+            x = ess[..., :-1, -1, :ds]
+            y = ess[..., :-1, -1, ds:2*ds]
             xaT = T.outer(x, a)
             yaT = T.outer(y, a)
             xaxaT = T.concatenate([
                 T.concatenate([xxT, xaT], -1),
                 T.concatenate([T.matrix_transpose(xaT), aaT], -1),
             ], -2)
-            batch_size = T.shape(stats)[0]
+            batch_size = T.shape(ess)[0]
             num_batches = T.to_float(num_data) / T.to_float(batch_size)
-            stats = [
+            ess = [
                 yyT,
                 T.concatenate([yxT, yaT], -1),
                 xaxaT,
@@ -110,34 +109,31 @@ class BayesianLDS(LDS):
             (XtAt_XtAtT, XtAt), (Xt1_Xt1T, Xt1) = self.get_statistics(q_Xt, q_At, q_Xt1)
             batch_size = T.shape(XtAt)[0]
             num_batches = T.to_float(num_data) / T.to_float(batch_size)
-            stats = [
+            ess = [
                 Xt1_Xt1T,
                 T.einsum('nha,nhb->nhba', XtAt, Xt1),
                 XtAt_XtAtT,
                 T.ones([batch_size, self.horizon - 1])
             ]
         if self.time_varying:
-            return [-(a + num_batches * b - c) for a, b, c in zip(
-                self.A_prior.get_parameters('natural'),
-                [
-                    T.sum(stats[0], [0]),
-                    T.sum(stats[1], [0]),
-                    T.sum(stats[2], [0]),
-                    T.sum(stats[3], [0]),
-                ],
-                self.A_variational.get_parameters('natural'),
-            )]
+            ess = [
+                T.sum(ess[0], [0]),
+                T.sum(ess[1], [0]),
+                T.sum(ess[2], [0]),
+                T.sum(ess[3], [0]),
+            ]
         else:
-            return [(-(a + num_batches * b - c)) for a, b, c in zip(
-                self.A_prior.get_parameters('natural'),
-                [
-                    T.sum(stats[0], [0, 1]),
-                    T.sum(stats[1], [0, 1]),
-                    T.sum(stats[2], [0, 1]),
-                    T.sum(stats[3], [0, 1]),
-                ],
-                self.A_variational.get_parameters('natural'),
-            )]
+            ess = [
+                T.sum(ess[0], [0, 1]),
+                T.sum(ess[1], [0, 1]),
+                T.sum(ess[2], [0, 1]),
+                T.sum(ess[3], [0, 1]),
+            ]
+        return [-(a + num_batches * b - c) for a, b, c in zip(
+            self.A_prior.get_parameters('natural'),
+            ess,
+            self.A_variational.get_parameters('natural'),
+        )]
 
     def kl_divergence(self, q_X, q_A, num_data):
         if (q_X, q_A) not in self.cache:
