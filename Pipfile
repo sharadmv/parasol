@@ -26,7 +26,7 @@ fabric = "*"
 pandas = "*"
 gps = {git = "https://github.com/sharadmv/gps.git",editable = true}
 click = "*"
-deepx = "==0.4.8"
+deepx = "==0.4.9"
 
 [requires]
 python_version = "3.6"

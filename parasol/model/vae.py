@@ -26,7 +26,7 @@ class VAE(Model):
                  ds, da,
                  state_encoder, state_decoder,
                  action_encoder, action_decoder,
-                 prior, smooth=False):
+                 prior):
         super(VAE, self).__init__(do, du, horizon)
         self.ds, self.da = ds, da
         self.state_encoder = copy.deepcopy(state_encoder)
@@ -36,7 +36,6 @@ class VAE(Model):
         self.prior_params = prior
         if self.prior_params is None:
             self.prior_params = {'prior_type': 'none'}
-        self.smooth = smooth
         self.initialize()
 
     def initialize(self):
@@ -63,13 +62,17 @@ class VAE(Model):
 
             batch_size = T.shape(self.O)[0]
 
-            q_S = self.q_S = util.map_network(self.state_encoder)(self.O)
-            q_O = self.q_O = util.map_network(self.state_decoder)(q_S.sample()[0])
-            q_A = self.q_A = util.map_network(self.action_encoder)(self.U)
-            q_U = self.q_U = util.map_network(self.action_decoder)(q_A.sample()[0])
+            S_potentials = util.map_network(self.state_encoder)(self.O)
+            A_potentials = util.map_network(self.action_encoder)(self.U)
+
+            (self.q_S, self.q_A), prior_kl, kl_grads, info = self.prior.posterior_kl_grads(S_potentials, A_potentials, self.num_data)
+
 
             self.q_S_sample = self.q_S.sample()[0]
             self.q_A_sample = self.q_A.sample()[0]
+
+            self.q_O = util.map_network(self.state_decoder)(self.q_S.sample()[0])
+            self.q_U = util.map_network(self.action_decoder)(self.q_A.sample()[0])
             self.q_O_sample = self.q_O.sample()[0]
             self.q_U_sample = self.q_U.sample()[0]
 
@@ -78,9 +81,7 @@ class VAE(Model):
             self.q_O__sample = self.q_O_.sample()[0]
             self.q_U__sample = self.q_U_.sample()[0]
 
-            prior_kl, kl_grads, info = self.prior.kl_and_grads(q_S, q_A, self.num_data)
-
-            log_likelihood = T.sum(q_O.log_likelihood(self.O), axis=1)
+            log_likelihood = T.sum(self.q_O.log_likelihood(self.O), axis=1)
 
             elbo = T.mean(log_likelihood - prior_kl)
             train_elbo = T.mean(log_likelihood - self.beta * prior_kl)
@@ -149,6 +150,7 @@ class VAE(Model):
         else:
             writer = T.core.summary.FileWriter(out_dir / "tb", graph=self.graph)
         global_iter = 0
+        dyn = self.prior.get_dynamics()[0][0]
         for epoch in tqdm.trange(num_epochs, desc='Training'):
             if dump_every is not None and epoch % dump_every == 0:
                 self.dump_weights(epoch, out_dir)

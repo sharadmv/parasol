@@ -52,7 +52,16 @@ class BayesianLDS(LDS):
             )
 
     def sufficient_statistics(self):
-        return self.A_variational.expected_sufficient_statistics()
+        if self.time_varying:
+            return self.A_variational.expected_sufficient_statistics()
+        else:
+            stats = self.A_variational.expected_sufficient_statistics()
+            return [
+                T.tile(stats[0][None], [self.horizon - 1, 1, 1]),
+                T.tile(stats[1][None], [self.horizon - 1, 1, 1]),
+                T.tile(stats[2][None], [self.horizon - 1, 1, 1]),
+                T.tile(stats[3][None], [self.horizon - 1]),
+            ]
 
     def has_natural_gradients(self):
         return True
@@ -60,51 +69,32 @@ class BayesianLDS(LDS):
     def get_parameters(self):
         return self.A_variational.get_parameters('natural')
 
-    def kl_and_grads(self, q_X, q_A, num_data):
-        kl, info = self.kl_divergence(q_X, q_A, num_data)
-        q_Xt = stats.Gaussian([
-            q_X.get_parameters('regular')[0][:, :-1],
-            q_X.get_parameters('regular')[1][:, :-1],
-        ])
-        q_At = stats.Gaussian([
-            q_A.get_parameters('regular')[0][:, :-1],
-            q_A.get_parameters('regular')[1][:, :-1],
-        ])
-        p_Xt1 = self.forward(q_Xt, q_At)
-        q_Xt1 = stats.Gaussian([
-            q_X.get_parameters('regular')[0][:, 1:],
-            q_X.get_parameters('regular')[1][:, 1:],
-        ])
-        (XtAt_XtAtT, XtAt), (Xt1_Xt1T, Xt1) = self.get_statistics(q_Xt, q_At, q_Xt1)
-        batch_size = T.shape(XtAt)[0]
-        num_batches = T.to_float(num_data) / T.to_float(batch_size)
-        if self.time_varying:
-            return kl, [(c, -(a + num_batches * b - c)) for a, b, c in zip(
-                self.A_prior.get_parameters('natural'),
-                [
-                    T.sum(Xt1_Xt1T, [0]),
-                    T.einsum('nha,nhb->hba', XtAt, Xt1),
-                    T.sum(XtAt_XtAtT, [0]),
-                    T.sum(T.ones([batch_size]), [0])
-                ],
-                self.A_variational.get_parameters('natural'),
-            )], info
+    def kl_gradients(self, q_X, q_A, _, num_data):
+        if self.smooth:
+            ds = self.ds
+            stats = q_X.expected_sufficient_statistics()
+            yyT = stats[..., :-1, ds:2*ds, ds:2*ds]
+            xxT = stats[..., :-1, :ds, :ds]
+            yxT = stats[..., :-1, ds:2*ds, :ds]
+            a = q_A.expected_value()[:, :-1]
+            aaT = T.outer(a, a)
+            x = stats[..., :-1, -1, :ds]
+            y = stats[..., :-1, -1, ds:2*ds]
+            xaT = T.outer(x, a)
+            yaT = T.outer(y, a)
+            xaxaT = T.concatenate([
+                T.concatenate([xxT, xaT], -1),
+                T.concatenate([T.matrix_transpose(xaT), aaT], -1),
+            ], -2)
+            batch_size = T.shape(stats)[0]
+            num_batches = T.to_float(num_data) / T.to_float(batch_size)
+            stats = [
+                yyT,
+                T.concatenate([yxT, yaT], -1),
+                xaxaT,
+                T.ones([batch_size, self.horizon - 1])
+            ]
         else:
-            return kl, [(c, -(a + num_batches * b - c)) for a, b, c in zip(
-                self.A_prior.get_parameters('natural'),
-                [
-                    T.sum(Xt1_Xt1T, [0, 1]),
-                    T.einsum('nha,nhb->ba', XtAt, Xt1),
-                    T.sum(XtAt_XtAtT, [0, 1]),
-                    T.sum(T.ones([batch_size, self.horizon - 1]), [0, 1])
-                ],
-                self.A_variational.get_parameters('natural'),
-            )], info
-
-    def kl_divergence(self, q_X, q_A, num_data):
-        # q_Xt - [N, H, ds]
-        # q_At - [N, H, da]
-        if (q_X, q_A) not in self.cache:
             q_Xt = stats.Gaussian([
                 q_X.get_parameters('regular')[0][:, :-1],
                 q_X.get_parameters('regular')[1][:, :-1],
@@ -113,23 +103,79 @@ class BayesianLDS(LDS):
                 q_A.get_parameters('regular')[0][:, :-1],
                 q_A.get_parameters('regular')[1][:, :-1],
             ])
-            p_Xt1 = self.forward(q_Xt, q_At)
             q_Xt1 = stats.Gaussian([
                 q_X.get_parameters('regular')[0][:, 1:],
                 q_X.get_parameters('regular')[1][:, 1:],
             ])
-            num_data = T.to_float(num_data)
-            rmse = T.sqrt(T.sum(T.square(q_Xt1.get_parameters('regular')[1] - p_Xt1.get_parameters('regular')[1]), axis=-1))
-            model_stdev = T.sqrt(T.core.matrix_diag_part(p_Xt1.get_parameters('regular')[0]))
-            encoding_stdev = T.sqrt(T.core.matrix_diag_part(q_Xt1.get_parameters('regular')[0]))
-            local_kl = T.mean(T.sum(stats.kl_divergence(q_Xt1, p_Xt1), axis=1), axis=0)
-            if self.time_varying:
-                global_kl = T.sum(stats.kl_divergence(self.A_variational, self.A_prior))
+            (XtAt_XtAtT, XtAt), (Xt1_Xt1T, Xt1) = self.get_statistics(q_Xt, q_At, q_Xt1)
+            batch_size = T.shape(XtAt)[0]
+            num_batches = T.to_float(num_data) / T.to_float(batch_size)
+            stats = [
+                Xt1_Xt1T,
+                T.einsum('nha,nhb->nhba', XtAt, Xt1),
+                XtAt_XtAtT,
+                T.ones([batch_size, self.horizon - 1])
+            ]
+        if self.time_varying:
+            return [-(a + num_batches * b - c) for a, b, c in zip(
+                self.A_prior.get_parameters('natural'),
+                [
+                    T.sum(stats[0], [0]),
+                    T.sum(stats[1], [0]),
+                    T.sum(stats[2], [0]),
+                    T.sum(stats[3], [0]),
+                ],
+                self.A_variational.get_parameters('natural'),
+            )]
+        else:
+            return [(-(a + num_batches * b - c)) for a, b, c in zip(
+                self.A_prior.get_parameters('natural'),
+                [
+                    T.sum(stats[0], [0, 1]),
+                    T.sum(stats[1], [0, 1]),
+                    T.sum(stats[2], [0, 1]),
+                    T.sum(stats[3], [0, 1]),
+                ],
+                self.A_variational.get_parameters('natural'),
+            )]
+
+    def kl_divergence(self, q_X, q_A, num_data):
+        if (q_X, q_A) not in self.cache:
+            if self.smooth:
+                state_prior = stats.Gaussian([
+                    T.eye(self.ds),
+                    T.zeros(self.ds)
+                ])
+                p_X = stats.LDS(
+                    (self.sufficient_statistics(), state_prior, None, q_A.expected_value(), self.horizon),
+                'internal')
+                self.cache[(q_X, q_A)] = T.mean(stats.kl_divergence(q_X, p_X), axis=0), {}
             else:
-                global_kl = stats.kl_divergence(self.A_variational, self.A_prior)
-            self.cache[(q_X, q_A)] = (
-                local_kl + global_kl / T.to_float(num_data),
-                {'rmse': rmse, 'encoder-stdev': encoding_stdev, 'model-stdev': model_stdev,
-                 'local-kl': local_kl, 'global-kl': global_kl}
-            )
+                q_Xt = stats.Gaussian([
+                    q_X.get_parameters('regular')[0][:, :-1],
+                    q_X.get_parameters('regular')[1][:, :-1],
+                ])
+                q_At = stats.Gaussian([
+                    q_A.get_parameters('regular')[0][:, :-1],
+                    q_A.get_parameters('regular')[1][:, :-1],
+                ])
+                p_Xt1 = self.forward(q_Xt, q_At)
+                q_Xt1 = stats.Gaussian([
+                    q_X.get_parameters('regular')[0][:, 1:],
+                    q_X.get_parameters('regular')[1][:, 1:],
+                ])
+                num_data = T.to_float(num_data)
+                rmse = T.sqrt(T.sum(T.square(q_Xt1.get_parameters('regular')[1] - p_Xt1.get_parameters('regular')[1]), axis=-1))
+                model_stdev = T.sqrt(T.core.matrix_diag_part(p_Xt1.get_parameters('regular')[0]))
+                encoding_stdev = T.sqrt(T.core.matrix_diag_part(q_Xt1.get_parameters('regular')[0]))
+                local_kl = T.mean(T.sum(stats.kl_divergence(q_Xt1, p_Xt1), axis=1), axis=0)
+                if self.time_varying:
+                    global_kl = T.sum(stats.kl_divergence(self.A_variational, self.A_prior))
+                else:
+                    global_kl = stats.kl_divergence(self.A_variational, self.A_prior)
+                self.cache[(q_X, q_A)] = (
+                    local_kl + global_kl / T.to_float(num_data),
+                    {'rmse': rmse, 'encoder-stdev': encoding_stdev, 'model-stdev': model_stdev,
+                    'local-kl': local_kl, 'global-kl': global_kl}
+                )
         return self.cache[(q_X, q_A)]

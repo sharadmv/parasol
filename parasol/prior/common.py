@@ -10,17 +10,25 @@ class Prior(object):
         self.ds, self.da = ds, da
         self.horizon = horizon
 
+    def encode(self, q_X, q_A):
+        return q_X, q_A
+
     @abstractmethod
     def get_parameters(self):
         pass
 
-    def kl_and_grads(self, q_X, q_A, num_data):
-        params = self.get_parameters()
+    def posterior_kl_grads(self, q_X, q_A, num_data):
+        q_X, q_A = self.encode(q_X, q_A)
         kl, info = self.kl_divergence(q_X, q_A, num_data)
-        return kl, list(zip(params, T.grad(kl, params))), info
+        grads = self.kl_gradients(q_X, q_A, kl, num_data)
+        return (q_X, q_A), kl, list(zip(self.get_parameters(), grads)), info
 
     def has_natural_gradients(self):
         return False
+
+    @abstractmethod
+    def kl_gradients(self, q_X, q_A, kl, num_data):
+        pass
 
     @abstractmethod
     def kl_divergence(self, q_X, q_A, num_data):
