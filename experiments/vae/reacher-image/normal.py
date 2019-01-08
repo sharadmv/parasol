@@ -18,38 +18,46 @@ horizon = 50
 experiment = dict(
     experiment_name='reacher-image',
     experiment_type='train_vae',
-    environment=env_params,
+    env=env_params,
     model=dict(
         do=do, du=du, ds=ds, da=da, horizon=horizon,
         state_encoder=(nn.Reshape(do, [64, 64, 3])
-                    >> nn.Convolution([3, 3, 32]) >> nn.Relu()
-                    >> nn.Convolution([3, 3, 32]) >> nn.Relu()
-                    >> nn.Convolution([3, 3, 16]) >> nn.Relu()
-                    >> nn.Flatten() >> nn.Relu(200) >> nn.Gaussian(ds)),
-        state_decoder=(nn.Relu(ds, 1024) >> nn.Reshape([16, 16, 4])
-                    >> nn.Convolution([3, 3, 32]) >> nn.Relu()
-                    >> nn.Deconvolution([2, 2, 32]) >> nn.Relu()
-                    >> nn.Convolution([3, 3, 32]) >> nn.Relu()
-                    >> nn.Deconvolution([2, 2, 32]) >> nn.Relu()
-                    >> nn.Convolution([2, 2, 3]) >> nn.Flatten() >> nn.Bernoulli()),
-        action_encoder=nn.IdentityVariance(),
-        action_decoder=nn.IdentityVariance(),
-        prior={
-            'prior_type': sweep(['normal', 'none', 'lds', 'blds']),
-        }
+                    >> nn.Convolution([7, 7, 64], strides=(1, 1)) >> nn.Relu()
+                    >> nn.Convolution([5, 5, 32], strides=(2, 2))
+                    >> nn.Convolution([3, 3, 8], strides=(2, 2))
+                    >> nn.Flatten() >> nn.Relu(256) >> nn.Gaussian(ds)),
+        state_decoder=(nn.Relu(ds, 512) >> nn.Reshape([8, 8, 8])
+                    >> nn.Deconvolution([3, 3, 32])
+                    >> nn.Deconvolution([5, 5, 64])
+                    >> nn.Deconvolution([7, 7, 3])
+                    >> nn.Flatten() >> nn.Bernoulli()),
+        action_encoder=nn.IdentityVariance(variance=1e-4),
+        action_decoder=nn.IdentityVariance(variance=1e-4),
+        prior=sweep([
+            dict(prior_type='lds', smooth=True),
+            dict(prior_type='lds', smooth=False),
+            dict(prior_type='blds', smooth=True),
+            dict(prior_type='blds', smooth=False),
+        ], ['lds', 'lds-smooth', 'blds', 'blds-smooth'])
     ),
     train=dict(
         num_epochs=2000,
-        learning_rate=2e-4,
+        learning_rate=1e-4,
+        model_learning_rate=1e-5,
+        beta_start=1e-5,
+        beta_end=10.0,
+        beta_rate=2e-4,
+        beta_increase=500,
         batch_size=2,
-        dump_every=100,
-        summary_every=200,
+        dump_every=200,
+        summary_every=400,
     ),
     data=dict(
         num_rollouts=100,
         init_std=0.5,
     ),
+    dump_data=True,
     seed=0,
-    out_dir='s3://parasol-experiments/vae/reacher-image-gpu',
+    out_dir='s3://parasol-experiments/vae/reacher-image-smooth',
 )
-run(experiment, remote=True, gpu=True, num_threads=4, instance_type='m5.4xlarge')
+run(experiment, remote=True, gpu=True, num_threads=1, instance_type='g3.4xlarge')
