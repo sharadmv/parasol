@@ -54,8 +54,9 @@ class GymPendulum(gym.Env):
         return self._get_obs(), -costs, False, {}
 
     def reset(self):
-        high = np.array([np.pi, 1])
-        self.state = self.np_random.uniform(low=-high, high=high)
+        # modify from original gym env to fix starting state
+        high = np.array([0.01, 0.01])
+        self.state = self.np_random.uniform(low=-high, high=high) + np.array([np.pi, 0])
         self.last_u = None
         return self._get_obs()
 
@@ -145,3 +146,6 @@ class Pendulum(GymWrapper):
 
         thdot = s[:,2]
         return angle_normalize(th)**2 + .1*thdot**2 + .001*(np.squeeze(a)**2)
+
+    def torque_matrix(self):
+        return 0.002 * np.eye(self.get_action_dim())

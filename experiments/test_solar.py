@@ -8,9 +8,9 @@ experiment = dict(
     },
     control={
         'control_type': 'lqrflm',
-        'prior_type': 'gmm',
+        'prior_type': 'none',
         'horizon': 100,
-        'init_std': 5,
+        'init_std': 1.,
         'kl_step': 0.1,
     },
     # model='s3://parasol-experiments/vae/reacher-image/reacher-image_model{prior{prior_type}}-blds/weights/model-1700.pkl',
