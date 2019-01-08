@@ -77,6 +77,7 @@ class BayesianLDS(LDS):
             xxT = ess[..., :-1, :ds, :ds]
             yxT = ess[..., :-1, ds:2*ds, :ds]
             aaT, a = stats.Gaussian.unpack(q_A.expected_sufficient_statistics())
+            aaT, a = aaT[:, :-1], a[:, :-1]
             x = ess[..., :-1, -1, :ds]
             y = ess[..., :-1, -1, ds:2*ds]
             xaT = T.outer(x, a)
