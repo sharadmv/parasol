@@ -150,7 +150,6 @@ class VAE(Model):
         else:
             writer = T.core.summary.FileWriter(out_dir / "tb", graph=self.graph)
         global_iter = 0
-        dyn = self.prior.get_dynamics()
         for epoch in tqdm.trange(num_epochs, desc='Training'):
             if dump_every is not None and epoch % dump_every == 0:
                 self.dump_weights(epoch, out_dir)
@@ -167,7 +166,6 @@ class VAE(Model):
                         self.learning_rate: learning_rate,
                         self.model_learning_rate: model_learning_rate,
                     })
-                    print(self.session.run(dyn)[0][0])
                     if writer is not None:
                         writer.add_summary(summary, global_iter)
                         writer.flush()
