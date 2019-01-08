@@ -24,6 +24,7 @@ class Solar(Experiment):
                  rollouts_per_iter=100,
                  num_iters=10,
                  buffer_size=None,
+                 smooth=True,
                  model_train={},
                  **kwargs):
         super(Solar, self).__init__(experiment_name, **kwargs)
@@ -37,6 +38,7 @@ class Solar(Experiment):
         self.rollouts_per_iter = rollouts_per_iter
         self.buffer_size = buffer_size if buffer_size is not None else rollouts_per_iter
         self.num_iters = num_iters
+        self.smooth = smooth
         self.model_train_params = model_train
 
     def initialize(self, out_dir):
@@ -75,6 +77,7 @@ class Solar(Experiment):
             'rollouts_per_iter': self.rollouts_per_iter,
             'num_videos': self.num_videos,
             'num_iters': self.num_iters,
+            'smooth': self.smooth,
         }
 
     @classmethod
@@ -89,6 +92,7 @@ class Solar(Experiment):
             num_videos=params['num_videos'],
             num_iters=params['num_iters'],
             buffer_size=params['buffer_size'],
+            smooth=params['smooth'],
             model_train=params['model_train'],
             horizon=params['horizon'],
             rollouts_per_iter=params['rollouts_per_iter']
@@ -102,7 +106,7 @@ class Solar(Experiment):
 
         def noise_function():
             n = util.generate_noise((self.horizon, self.control.da),
-                                    smooth=False)
+                                    smooth=self.smooth)
             return n
 
         replay_buffer = None
