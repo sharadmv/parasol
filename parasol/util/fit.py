@@ -27,33 +27,30 @@ def quadratic_regression_pd(SA, costs, diag_cost=False):
     C = tf.get_variable('cost_mat{}'.format(global_step), shape=[dsa, dsa],
                         dtype=tf.float32,
                         initializer=tf.random_uniform_initializer(minval=-0.1, maxval=0.1))
-    L = tf.matrix_band_part(C, 0, 0)
-    # L = tf.matrix_set_diag(L, tf.maximum(tf.matrix_diag_part(L), 1e-1))
+    L = tf.matrix_band_part(C, -1, 0)
+    L = tf.matrix_set_diag(L, tf.maximum(tf.matrix_diag_part(L), 0.0))
     LL = tf.matmul(L, tf.transpose(L))
     c = tf.get_variable('cost_vec{}'.format(global_step), shape=[dsa],
+                        dtype=tf.float32, initializer=tf.zeros_initializer())
+    b = tf.get_variable('cost_bias{}'.format(global_step), shape=[],
                         dtype=tf.float32, initializer=tf.zeros_initializer())
     s_ = tf.placeholder(tf.float32, [None, dsa])
     c_ = tf.placeholder(tf.float32, [None])
     pred_cost = 0.5 * tf.einsum('na,ab,nb->n', s_, LL, s_) + \
-            tf.einsum('na,a->n', s_, c)
+            tf.einsum('na,a->n', s_, c) + b
     mse = tf.reduce_mean(tf.square(pred_cost - c_))
-    opt = tf.train.GradientDescentOptimizer(1e-4).minimize(mse)
+    opt = tf.train.MomentumOptimizer(1e-3, 0.9).minimize(mse)
     N = SA.shape[0]
     SA = SA.reshape([-1, dsa])
     costs = costs.reshape([-1])
     with tf.Session() as sess:
-        sess.run([C.initializer, c.initializer])
-        i, perm = 0, np.random.permutation(N)
-        for itr in tqdm.trange(10000, desc='Fitting cost'):
-            if i + 1 > N:
-                i, perm = 0, np.random.permutation(N)
-            idx = perm[i]
-            i += 1
+        sess.run(tf.global_variables_initializer())
+        for itr in tqdm.trange(1000, desc='Fitting cost'):
             _, m = sess.run([opt, mse], feed_dict={
                 s_: SA,
                 c_: costs,
             })
-            if itr == 0 or itr == 9999:
+            if itr == 0 or itr == 999:
                 print('mse itr {}: {}'.format(itr, m))
         cost_mat, cost_vec = sess.run((LL, c))
 
