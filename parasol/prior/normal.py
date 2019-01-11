@@ -10,6 +10,9 @@ class Normal(Prior):
     def get_parameters(self):
         return []
 
+    def kl_gradients(self, q_X, q_A, kl, num_data):
+        return []
+
     def kl_and_grads(self, q_X, q_A, num_data):
         params = self.get_parameters()
         kl, info = self.kl_divergence(q_X, q_A, num_data)
