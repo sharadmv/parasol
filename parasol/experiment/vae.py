@@ -7,11 +7,14 @@ import deepx
 from deepx import T, stats
 import parasol.gym as gym
 import parasol.util as util
-import tensorflow.gfile as gfile
 
 from parasol.model import VAE
 
 from .common import Experiment
+
+import tensorflow as tf
+gfile = tf.gfile
+
 
 class TrainVAE(Experiment):
 

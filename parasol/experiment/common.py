@@ -4,9 +4,12 @@ import six
 from path import Path
 from abc import ABCMeta, abstractmethod
 
-import tensorflow.gfile as gfile
+import tensorflow as tf
 
 from parasol.util import json, ec2, tee_out
+
+gfile = tf.gfile
+
 
 @six.add_metaclass(ABCMeta)
 class Experiment(object):
