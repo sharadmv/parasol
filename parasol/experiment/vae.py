@@ -100,19 +100,21 @@ class TrainVAE(Experiment):
         np.random.seed(self.seed)
         random.seed(self.seed)
 
+        def noise_function():
+            n = util.generate_noise((self.horizon, self.env.get_action_dim()),
+                                    std=self.data_params['init_std'],
+                                    smooth=self.data_params['smooth_noise'])
+            return n
+
         if 'load_data' in self.data_params:
             with gfile.GFile(self.data_params['load_data'], 'rb') as fp:
                 rollouts = pickle.load(fp)
         else:
             env = self.env
-            num_rollouts, init_std = self.data_params['num_rollouts'], self.data_params['init_std']
+            num_rollouts = self.data_params['num_rollouts']
+            policy = lambda _, __, noise: noise
 
-            def policy(x, _, noise=None):
-                action = np.random.multivariate_normal(mean=np.zeros(env.get_action_dim()),
-                                          cov=np.eye(env.get_action_dim()) *
-                                          (init_std**2))
-                return action
-            rollouts = env.rollouts(num_rollouts, self.horizon, policy=policy, show_progress=True)
+            rollouts = env.rollouts(num_rollouts, self.horizon, policy=policy, noise=noise_function, show_progress=True)
         if self.dump_data:
             with gfile.GFile(out_dir / "data" / "rollouts.pkl", 'wb') as fp:
                 pickle.dump(rollouts, fp)
