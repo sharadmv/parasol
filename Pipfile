@@ -6,7 +6,7 @@ name = "pypi"
 [dev-packages]
 
 [packages]
-tensorflow = "==1.9"
+tensorflow = "==1.12"
 gym = {version = "*",extras = ["box2d", "mujoco"]}
 parasol = {path = ".",editable = true}
 jupyter = "*"
@@ -26,7 +26,8 @@ fabric = "*"
 pandas = "*"
 gps = {git = "https://github.com/sharadmv/gps.git",editable = true}
 click = "*"
-deepx = "==0.4.10"
+deepx = "==0.4.14"
+tensorflow-probability = "*"
 
 [requires]
 python_version = "3.6"

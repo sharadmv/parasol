@@ -180,13 +180,13 @@ class BayesianLDS(LDS):
                 A, Q = self.get_dynamics()
                 model_stdev = T.sqrt(T.matrix_diag_part(Q))
                 encoding_stdev = T.sqrt(T.matrix_diag_part(q_Xt1.get_parameters('regular')[0]))
-                local_kl = T.mean(T.sum(stats.kl_divergence(q_Xt1, p_Xt1), axis=1), axis=0)
+                local_kl = T.sum(stats.kl_divergence(q_Xt1, p_Xt1), axis=1)
                 if self.time_varying:
                     global_kl = T.sum(stats.kl_divergence(self.A_variational, self.A_prior))
                 else:
                     global_kl = stats.kl_divergence(self.A_variational, self.A_prior)
                 self.cache[(q_X, q_A)] = (
-                    local_kl + global_kl / T.to_float(num_data),
+                    T.mean(local_kl, axis=0) + global_kl / T.to_float(num_data),
                     {'rmse': rmse, 'encoder-stdev': encoding_stdev, 'model-stdev': model_stdev,
                     'local-kl': local_kl, 'global-kl': global_kl}
                 )
