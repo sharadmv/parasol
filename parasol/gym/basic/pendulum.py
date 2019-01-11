@@ -24,9 +24,15 @@ class GymPendulum(gym.Env):
         self.dt=.05
         self.viewer = None
 
-        high = np.array([1., 1., self.max_speed])
+        # modify from original gym env for (potential) images
+        if self.image:
+            image_size = self.image_dim ** 2 * 3
+            self.observation_space = spaces.Box(low=np.zeros(image_size), high=np.ones(image_size), dtype=np.float32)
+        else:
+            high = np.array([1., 1., self.max_speed])
+            self.observation_space = spaces.Box(low=-high, high=high, dtype=np.float32)
+
         self.action_space = spaces.Box(low=-self.max_torque, high=self.max_torque, shape=(1,), dtype=np.float32)
-        self.observation_space = spaces.Box(low=-high, high=high, dtype=np.float32)
 
         self.seed()
 
@@ -43,7 +49,8 @@ class GymPendulum(gym.Env):
         dt = self.dt
 
         u = np.clip(u, -self.max_torque, self.max_torque)[0]
-        self.last_u = u # for rendering
+        if not self.image:
+            self.last_u = u # for rendering
         costs = angle_normalize(th)**2 + .1*thdot**2 + .001*(u**2)
 
         newthdot = thdot + (-3*g/(2*l) * np.sin(th + np.pi) + 3./(m*l**2)*u) * dt
@@ -81,12 +88,14 @@ class GymPendulum(gym.Env):
             axle = rendering.make_circle(.05)
             axle.set_color(0,0,0)
             self.viewer.add_geom(axle)
-            fname = path.join(path.dirname(__file__), "assets/clockwise.png")
-            self.img = rendering.Image(fname, 1., 1.)
-            self.imgtrans = rendering.Transform()
-            self.img.add_attr(self.imgtrans)
+            if not self.image:
+                fname = path.join(path.dirname(__file__), "assets/clockwise.png")
+                self.img = rendering.Image(fname, 1., 1.)
+                self.imgtrans = rendering.Transform()
+                self.img.add_attr(self.imgtrans)
 
-        self.viewer.add_onetime(self.img)
+        if not self.image:
+            self.viewer.add_onetime(self.img)
         self.pole_transform.set_rotation(self.state[0] + np.pi/2)
         if self.last_u:
             self.imgtrans.scale = (-self.last_u/2, np.abs(self.last_u)/2)
