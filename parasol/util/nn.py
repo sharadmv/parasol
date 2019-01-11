@@ -9,7 +9,14 @@ def map_network(network):
         dim_in = data_shape[-1]
         flattened = T.reshape(data, [-1, dim_in])
         net_out = network(flattened)
-        if isinstance(net_out, stats.Gaussian):
+        if isinstance(net_out, stats.GaussianScaleDiag):
+            scale_diag, mu = net_out.get_parameters('regular')
+            dim_out = T.shape(mu)[-1]
+            return stats.GaussianScaleDiag([
+                T.reshape(scale_diag, T.concatenate([leading, [dim_out]])),
+                T.reshape(mu, T.concatenate([leading, [dim_out]])),
+            ])
+        elif isinstance(net_out, stats.Gaussian):
             sigma, mu = net_out.get_parameters('regular')
             dim_out = T.shape(mu)[-1]
             return stats.Gaussian([

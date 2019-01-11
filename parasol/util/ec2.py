@@ -34,10 +34,10 @@ with T.device(T.gpu()):
     from_json('%s').run()
 """
 
-def run_remote(params_path, gpu=False, instance_type='m5.large', ami='ami-0e3a4bae76a75fd3b', spot_price=0.5):
+def run_remote(params_path, gpu=False, instance_type='m5.large', ami='ami-0293b692096cef58a', spot_price=0.5):
     command = COMMAND % params_path
     if gpu:
-        ami = 'ami-0631e8abbfc486a1d'
+        ami = 'ami-0c607569c0cf20ead'
         instance_type = 'g3.4xlarge'
         spot_price = 0.5
         command = GPU_COMMAND % params_path
@@ -49,6 +49,7 @@ def run_remote(params_path, gpu=False, instance_type='m5.large', ami='ami-0e3a4b
         conn.put(parasol_zip)
         conn.run("mkdir parasol; unzip -o parasol.zip -d parasol; rm parasol.zip", hide='stdout')
         conn.run("PIPENV_YES=1 pipenv run python setup.py develop", hide='stdout')
+        conn.run("PIPENV_YES=1 pipenv run pip install deepx --upgrade", hide='stdout')
         conn.run("echo \"%s\" > run.py" % command, hide='stdout')
         conn.run("tmux new-session -d -s 'experiment' \"pipenv run python run.py; sudo poweroff\"")
 

@@ -32,12 +32,12 @@ class LDS(Dynamics):
         if self.time_varying:
             A = T.concatenate([T.eye(ds), T.zeros([ds, da])], -1)
             self.A = T.variable(A[None] + 1e-2 * T.random_normal([H - 1, ds, ds + da]))
-            self.Q_log_diag = T.variable(T.random_normal([H - 1, ds]) - 3)
+            self.Q_log_diag = T.variable(T.random_normal([H - 1, ds]) - 2)
             self.Q = T.matrix_diag(T.exp(self.Q_log_diag))
         else:
             A = T.concatenate([T.eye(ds), T.zeros([ds, da])], -1)
             self.A = T.variable(A + 1e-2 * T.random_normal([ds, ds + da]))
-            self.Q_log_diag = T.variable(T.random_normal([ds]) - 3)
+            self.Q_log_diag = T.variable(T.random_normal([ds]) - 2)
             self.Q = T.matrix_diag(T.exp(self.Q_log_diag))
 
     def sufficient_statistics(self):
@@ -103,33 +103,41 @@ class LDS(Dynamics):
         # q_Xt - [N, H, ds]
         # q_At - [N, H, da]
         if (q_X, q_A) not in self.cache:
+            info = {}
             if self.smooth:
-                state_prior = stats.Gaussian([
-                    T.eye(self.ds),
+                state_prior = stats.GaussianScaleDiag([
+                    T.ones(self.ds),
                     T.zeros(self.ds)
                 ])
                 p_X = stats.LDS(
                     (self.sufficient_statistics(), state_prior, None, q_A.expected_value(), self.horizon),
                 'internal')
-                self.cache[(q_X, q_A)] = T.mean(stats.kl_divergence(q_X, p_X), axis=0), {}
+                kl = T.mean(stats.kl_divergence(q_X, p_X), axis=0)
+                Q = self.get_dynamics()[1]
+                info['model_stdev'] = T.sqrt(T.matrix_diag_part(Q))
             else:
-                q_Xt = stats.Gaussian([
+                q_Xt = q_X.__class__([
                     q_X.get_parameters('regular')[0][:, :-1],
                     q_X.get_parameters('regular')[1][:, :-1],
                 ])
-                q_At = stats.Gaussian([
+                q_At = q_A.__class__([
                     q_A.get_parameters('regular')[0][:, :-1],
                     q_A.get_parameters('regular')[1][:, :-1],
                 ])
                 p_Xt1 = self.forward(q_Xt, q_At)
-                q_Xt1 = stats.Gaussian([
+                q_Xt1 = q_X.__class__([
                     q_X.get_parameters('regular')[0][:, 1:],
                     q_X.get_parameters('regular')[1][:, 1:],
                 ])
                 rmse = T.sqrt(T.sum(T.square(q_Xt1.get_parameters('regular')[1] - p_Xt1.get_parameters('regular')[1]), axis=-1))
-                model_stdev = T.sqrt(T.core.matrix_diag_part(p_Xt1.get_parameters('regular')[0]))
-                encoding_stdev = T.sqrt(T.core.matrix_diag_part(q_Xt1.get_parameters('regular')[0]))
-                self.cache[(q_X, q_A)] = T.mean(T.sum(stats.kl_divergence(q_Xt1, p_Xt1), axis=-1), axis=0), {'rmse': rmse, 'encoder-stdev': encoding_stdev, 'model-stdev': model_stdev}
+                kl = T.mean(T.sum(stats.kl_divergence(q_Xt1, p_Xt1), axis=-1), axis=0)
+                Q = self.get_dynamics()[1]
+                model_stdev = T.sqrt(T.matrix_diag_part(Q))
+                info['rmse'] = rmse
+                info['model_stdev'] = model_stdev
+                encoder_stdev = T.sqrt(q_X.get_parameters('regular')[0])
+                info['encoder-stdev'] = encoder_stdev
+            self.cache[(q_X, q_A)] = kl, info
         return self.cache[(q_X, q_A)]
 
     def kl_gradients(self, q_X, q_A, kl, num_data):

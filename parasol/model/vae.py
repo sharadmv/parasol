@@ -3,7 +3,7 @@ import pickle
 import tensorflow as tf
 import numpy as np
 import tqdm
-from deepx import T, stats
+from deepx import T
 
 from parasol import util
 from parasol.prior import Normal, NNDS, LDS, BayesianLDS, NoPrior
@@ -60,19 +60,19 @@ class VAE(Model):
             self.learning_rate = T.placeholder(T.floatx(), [])
             self.model_learning_rate = T.placeholder(T.floatx(), [])
 
-            batch_size = T.shape(self.O)[0]
+            self.S_potentials = util.map_network(self.state_encoder)(self.O)
+            self.A_potentials = util.map_network(self.action_encoder)(self.U)
 
-            S_potentials = util.map_network(self.state_encoder)(self.O)
-            A_potentials = util.map_network(self.action_encoder)(self.U)
-
-            (self.q_S, self.q_A), prior_kl, kl_grads, info = self.prior.posterior_kl_grads(S_potentials, A_potentials, self.num_data)
+            (self.q_S, self.q_A), self.prior_kl, self.kl_grads, self.info = self.prior.posterior_kl_grads(
+                self.S_potentials, self.A_potentials, self.num_data
+            )
 
 
             self.q_S_sample = self.q_S.sample()[0]
             self.q_A_sample = self.q_A.sample()[0]
 
-            self.q_O = util.map_network(self.state_decoder)(self.q_S.sample()[0])
-            self.q_U = util.map_network(self.action_decoder)(self.q_A.sample()[0])
+            self.q_O = util.map_network(self.state_decoder)(self.q_S_sample)
+            self.q_U = util.map_network(self.action_decoder)(self.q_A_sample)
             self.q_O_sample = self.q_O.sample()[0]
             self.q_U_sample = self.q_U.sample()[0]
 
@@ -81,16 +81,16 @@ class VAE(Model):
             self.q_O__sample = self.q_O_.sample()[0]
             self.q_U__sample = self.q_U_.sample()[0]
 
-            log_likelihood = T.sum(self.q_O.log_likelihood(self.O), axis=1)
+            self.log_likelihood = T.sum(self.q_O.log_likelihood(self.O), axis=1)
 
-            elbo = T.mean(log_likelihood - prior_kl)
-            train_elbo = T.mean(log_likelihood - self.beta * prior_kl)
-            T.core.summary.scalar("log-likelihood", T.mean(log_likelihood))
-            T.core.summary.scalar("prior-kl", T.mean(prior_kl))
+            self.elbo = T.mean(self.log_likelihood - self.prior_kl)
+            train_elbo = T.mean(self.log_likelihood - self.beta * self.prior_kl)
+            T.core.summary.scalar("log-likelihood", T.mean(self.log_likelihood))
+            T.core.summary.scalar("prior-kl", T.mean(self.prior_kl))
             T.core.summary.scalar("beta", self.beta)
-            T.core.summary.scalar("elbo", elbo)
+            T.core.summary.scalar("elbo", self.elbo)
             T.core.summary.scalar("beta-elbo", train_elbo)
-            for k, v in info.items():
+            for k, v in self.info.items():
                 T.core.summary.scalar(k, T.mean(v))
             self.summary = T.core.summary.merge_all()
             neural_params = (
@@ -99,24 +99,23 @@ class VAE(Model):
                 + self.action_encoder.get_parameters()
                 + self.action_decoder.get_parameters()
             )
-            neural_params = (
-                self.state_encoder.get_parameters()
-                + self.state_decoder.get_parameters()
-                + self.action_encoder.get_parameters()
-                + self.action_decoder.get_parameters()
-            )
             if len(neural_params) > 0:
-                self.neural_op = T.core.train.AdamOptimizer(self.learning_rate).minimize(-train_elbo,
-                                                                                        var_list=neural_params)
+                # self.neural_op = T.core.train.AdamOptimizer(self.learning_rate).minimize(-train_elbo,
+                                                                                        # var_list=neural_params)
+                optimizer = T.core.train.AdamOptimizer(self.learning_rate)
+                gradients, variables = zip(*optimizer.compute_gradients(-train_elbo, var_list=neural_params))
+                gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
+                self.neural_op = optimizer.apply_gradients(zip(gradients, variables))
             else:
                 self.neural_op = T.core.no_op()
-            if len(kl_grads) > 0:
+            if len(self.kl_grads) > 0:
                 if self.prior.has_natural_gradients():
-                    opt = lambda x: T.core.train.MomentumOptimizer(x, 0.5)
+                    # opt = lambda x: T.core.train.MomentumOptimizer(x, 0.5)
+                    opt = lambda x: T.core.train.GradientDescentOptimizer(x)
                 else:
                     opt = T.core.train.AdamOptimizer
                 self.dynamics_op = opt(self.model_learning_rate).apply_gradients([
-                    (b, a) for a, b in kl_grads
+                    (b, a) for a, b in self.kl_grads
                 ])
             else:
                 self.dynamics_op = T.core.no_op()

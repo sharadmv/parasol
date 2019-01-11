@@ -10,29 +10,31 @@ class BayesianLDS(LDS):
     def initialize_objective(self):
         H, ds, da = self.horizon, self.ds, self.da
         if self.time_varying:
+            A = T.concatenate([H - 1, T.eye(ds), T.zeros([ds, da])], -1)
             self.A_prior = stats.MNIW([
                 T.eye(ds, batch_shape=[H - 1]),
-                T.zeros([H - 1, ds, ds + da]),
-                1e2 * T.eye(ds + da, batch_shape=[H - 1]),
+                A,
+                1e1 * T.eye(ds + da, batch_shape=[H - 1]),
                 T.to_float(ds + da + 1) * T.ones([H - 1])
             ], parameter_type='regular')
             self.A_variational = stats.MNIW(list(map(T.variable, stats.MNIW.regular_to_natural([
                 T.eye(ds, batch_shape=[H - 1]),
-                T.random_normal([H - 1, ds, ds + da]),
-                1e2 * T.eye(ds + da, batch_shape=[H - 1]),
+                A + 1e-2 * T.random_normal([H - 1, ds, ds + da]),
+                1e1 * T.eye(ds + da, batch_shape=[H - 1]),
                 T.to_float(ds + da + 1) * T.ones([H - 1])
             ]))), parameter_type='natural')
         else:
+            A = T.concatenate([T.eye(ds), T.zeros([ds, da])], -1)
             self.A_prior = stats.MNIW([
                 (1) * T.eye(ds),
-                T.zeros([ds, ds + da]),
-                1e2 * T.eye(ds + da),
+                A,
+                T.eye(ds + da),
                 T.to_float(ds + da + 1)
             ], parameter_type='regular')
             self.A_variational = stats.MNIW(list(map(T.variable, stats.MNIW.regular_to_natural([
                 1 * T.eye(ds),
-                T.random_normal([ds, ds + da]),
-                1e2 * T.eye(ds + da),
+                A + 1e-2 * T.random_normal([ds, ds + da]),
+                T.eye(ds + da),
                 T.to_float(ds + da)
             ]))), parameter_type='natural')
 
@@ -95,15 +97,15 @@ class BayesianLDS(LDS):
                 T.ones([batch_size, self.horizon - 1])
             ]
         else:
-            q_Xt = stats.Gaussian([
+            q_Xt = q_X.__class__([
                 q_X.get_parameters('regular')[0][:, :-1],
                 q_X.get_parameters('regular')[1][:, :-1],
             ])
-            q_At = stats.Gaussian([
+            q_At = q_A.__class__([
                 q_A.get_parameters('regular')[0][:, :-1],
                 q_A.get_parameters('regular')[1][:, :-1],
             ])
-            q_Xt1 = stats.Gaussian([
+            q_Xt1 = q_X.__class__([
                 q_X.get_parameters('regular')[0][:, 1:],
                 q_X.get_parameters('regular')[1][:, 1:],
             ])
@@ -130,7 +132,7 @@ class BayesianLDS(LDS):
                 T.sum(ess[2], [0, 1]),
                 T.sum(ess[3], [0, 1]),
             ]
-        return [-(a + num_batches * b - c) for a, b, c in zip(
+        return [-(a + num_batches * b - c) / T.to_float(num_data) for a, b, c in zip(
             self.A_prior.get_parameters('natural'),
             ess,
             self.A_variational.get_parameters('natural'),
@@ -139,32 +141,45 @@ class BayesianLDS(LDS):
     def kl_divergence(self, q_X, q_A, num_data):
         if (q_X, q_A) not in self.cache:
             if self.smooth:
-                state_prior = stats.Gaussian([
-                    T.eye(self.ds),
+                state_prior = stats.GaussianScaleDiag([
+                    T.ones(self.ds),
                     T.zeros(self.ds)
                 ])
-                p_X = stats.LDS(
+                self.p_X = stats.LDS(
                     (self.sufficient_statistics(), state_prior, None, q_A.expected_value(), self.horizon),
                 'internal')
-                self.cache[(q_X, q_A)] = T.mean(stats.kl_divergence(q_X, p_X), axis=0), {}
+                local_kl = stats.kl_divergence(q_X, self.p_X)
+                if self.time_varying:
+                    global_kl = T.sum(stats.kl_divergence(self.A_variational, self.A_prior))
+                else:
+                    global_kl = stats.kl_divergence(self.A_variational, self.A_prior)
+                prior_kl = T.mean(local_kl, axis=0) + global_kl / T.to_float(num_data)
+                A, Q = self.get_dynamics()
+                model_stdev = T.sqrt(T.matrix_diag_part(Q))
+                self.cache[(q_X, q_A)] = prior_kl, {
+                    'local-kl': local_kl,
+                    'global-kl': global_kl,
+                    'model-stdev': model_stdev,
+                }
             else:
-                q_Xt = stats.Gaussian([
+                q_Xt = q_X.__class__([
                     q_X.get_parameters('regular')[0][:, :-1],
                     q_X.get_parameters('regular')[1][:, :-1],
                 ])
-                q_At = stats.Gaussian([
+                q_At = q_A.__class__([
                     q_A.get_parameters('regular')[0][:, :-1],
                     q_A.get_parameters('regular')[1][:, :-1],
                 ])
                 p_Xt1 = self.forward(q_Xt, q_At)
-                q_Xt1 = stats.Gaussian([
+                q_Xt1 = q_X.__class__([
                     q_X.get_parameters('regular')[0][:, 1:],
                     q_X.get_parameters('regular')[1][:, 1:],
                 ])
                 num_data = T.to_float(num_data)
                 rmse = T.sqrt(T.sum(T.square(q_Xt1.get_parameters('regular')[1] - p_Xt1.get_parameters('regular')[1]), axis=-1))
-                model_stdev = T.sqrt(T.core.matrix_diag_part(p_Xt1.get_parameters('regular')[0]))
-                encoding_stdev = T.sqrt(T.core.matrix_diag_part(q_Xt1.get_parameters('regular')[0]))
+                A, Q = self.get_dynamics()
+                model_stdev = T.sqrt(T.matrix_diag_part(Q))
+                encoding_stdev = T.sqrt(T.matrix_diag_part(q_Xt1.get_parameters('regular')[0]))
                 local_kl = T.mean(T.sum(stats.kl_divergence(q_Xt1, p_Xt1), axis=1), axis=0)
                 if self.time_varying:
                     global_kl = T.sum(stats.kl_divergence(self.A_variational, self.A_prior))

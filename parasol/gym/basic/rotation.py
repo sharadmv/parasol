@@ -51,7 +51,6 @@ class Rotation(ParasolEnvironment):
             self.A = 0.99 * np.tile(random_rotation(ds), [H-1, 1, 1])
             self.B = 0.1 * np.tile(np.random.randn(ds, da), [H-1, 1, 1])
             self.Q = 0.01 * np.tile(np.eye(ds), [H-1, 1, 1])
-        print('True mat:', self.A[0])
 
         if obs:
             assert shape_check(obs, ((H, do, ds), (H, do, do)))
