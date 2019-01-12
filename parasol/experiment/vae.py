@@ -54,8 +54,6 @@ class TrainVAE(Experiment):
             self.model = VAE(
                 **model
             )
-        self.env = gym.from_config(self.env_params)
-        self.model.make_summaries(self.env)
 
     def initialize(self, out_dir):
         if not gfile.Exists(out_dir / "tb"):
@@ -66,6 +64,10 @@ class TrainVAE(Experiment):
             gfile.MakeDirs(out_dir / "weights")
         if not gfile.Exists(out_dir / "data"):
             gfile.MakeDirs(out_dir / "data")
+        self.model.initialize()
+        self.env = gym.from_config(self.env_params)
+        self.model.make_summaries(self.env)
+
 
     def to_dict(self):
         return {
@@ -107,6 +109,7 @@ class TrainVAE(Experiment):
             return n
 
         if 'load_data' in self.data_params:
+            print("Loading data:", self.data_params['load_data'])
             with gfile.GFile(self.data_params['load_data'], 'rb') as fp:
                 rollouts = pickle.load(fp)
         else:
@@ -115,7 +118,7 @@ class TrainVAE(Experiment):
             policy = lambda _, __, noise: noise
 
             rollouts = env.rollouts(num_rollouts, self.horizon, policy=policy, noise=noise_function, show_progress=True)
-        if self.dump_data:
+        if self.dump_data and 'load_data' not in self.data_params:
             with gfile.GFile(out_dir / "data" / "rollouts.pkl", 'wb') as fp:
                 pickle.dump(rollouts, fp)
         self.model.train(rollouts, out_dir=out_dir, **self.train_params)

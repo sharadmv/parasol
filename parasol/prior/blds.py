@@ -12,30 +12,29 @@ class BayesianLDS(LDS):
         if self.time_varying:
             A = T.concatenate([H - 1, T.eye(ds), T.zeros([ds, da])], -1)
             self.A_prior = stats.MNIW([
-                T.eye(ds, batch_shape=[H - 1]),
-                A,
-                1e1 * T.eye(ds + da, batch_shape=[H - 1]),
-                T.to_float(ds + da + 1) * T.ones([H - 1])
+                2 * T.eye(ds, batch_shape=[H - 1]), A,
+                T.eye(ds + da, batch_shape=[H - 1]),
+                T.to_float(ds + 2) * T.ones([H - 1])
             ], parameter_type='regular')
             self.A_variational = stats.MNIW(list(map(T.variable, stats.MNIW.regular_to_natural([
-                T.eye(ds, batch_shape=[H - 1]),
+                2 * T.eye(ds, batch_shape=[H - 1]),
                 A + 1e-2 * T.random_normal([H - 1, ds, ds + da]),
-                1e1 * T.eye(ds + da, batch_shape=[H - 1]),
-                T.to_float(ds + da + 1) * T.ones([H - 1])
+                T.eye(ds + da, batch_shape=[H - 1]),
+                T.to_float(ds + 2) * T.ones([H - 1])
             ]))), parameter_type='natural')
         else:
             A = T.concatenate([T.eye(ds), T.zeros([ds, da])], -1)
             self.A_prior = stats.MNIW([
-                (1) * T.eye(ds),
+                2 * T.eye(ds),
                 A,
                 T.eye(ds + da),
-                T.to_float(ds + da + 1)
+                T.to_float(ds + 2)
             ], parameter_type='regular')
             self.A_variational = stats.MNIW(list(map(T.variable, stats.MNIW.regular_to_natural([
-                1 * T.eye(ds),
+                2 * T.eye(ds),
                 A + 1e-2 * T.random_normal([ds, ds + da]),
                 T.eye(ds + da),
-                T.to_float(ds + da)
+                T.to_float(ds + 2)
             ]))), parameter_type='natural')
 
     def get_dynamics(self):

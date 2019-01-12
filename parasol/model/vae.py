@@ -3,7 +3,7 @@ import pickle
 import tensorflow as tf
 import numpy as np
 import tqdm
-from deepx import T
+from deepx import T, stats
 
 from parasol import util
 from parasol.prior import Normal, NNDS, LDS, BayesianLDS, NoPrior
@@ -36,7 +36,6 @@ class VAE(Model):
         self.prior_params = prior
         if self.prior_params is None:
             self.prior_params = {'prior_type': 'none'}
-        self.initialize()
 
     def initialize(self):
         self.graph = T.core.Graph()
@@ -168,7 +167,6 @@ class VAE(Model):
                     })
                     if writer is not None:
                         writer.add_summary(summary, global_iter)
-                        writer.flush()
                 else:
                     self.session.run(self.train_op, {
                         self.O: O[batch_idx],

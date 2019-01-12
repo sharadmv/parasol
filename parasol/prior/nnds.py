@@ -82,6 +82,3 @@ class NNDS(Dynamics):
             sigma,
             delta_mu + state,
         ])
-
-
-        
