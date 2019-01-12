@@ -32,12 +32,12 @@ class LDS(Dynamics):
         if self.time_varying:
             A = T.concatenate([T.eye(ds), T.zeros([ds, da])], -1)
             self.A = T.variable(A[None] + 1e-2 * T.random_normal([H - 1, ds, ds + da]))
-            self.Q_log_diag = T.variable(T.random_normal([H - 1, ds]) - 2)
+            self.Q_log_diag = T.variable(T.random_normal([H - 1, ds]) + 1)
             self.Q = T.matrix_diag(T.exp(self.Q_log_diag))
         else:
             A = T.concatenate([T.eye(ds), T.zeros([ds, da])], -1)
             self.A = T.variable(A + 1e-2 * T.random_normal([ds, ds + da]))
-            self.Q_log_diag = T.variable(T.random_normal([ds]) - 2)
+            self.Q_log_diag = T.variable(T.random_normal([ds]) + 1)
             self.Q = T.matrix_diag(T.exp(self.Q_log_diag))
 
     def sufficient_statistics(self):
@@ -114,7 +114,7 @@ class LDS(Dynamics):
                 'internal')
                 kl = T.mean(stats.kl_divergence(q_X, p_X), axis=0)
                 Q = self.get_dynamics()[1]
-                info['model_stdev'] = T.sqrt(T.matrix_diag_part(Q))
+                info['model-stdev'] = T.sqrt(T.matrix_diag_part(Q))
             else:
                 q_Xt = q_X.__class__([
                     q_X.get_parameters('regular')[0][:, :-1],
@@ -134,9 +134,7 @@ class LDS(Dynamics):
                 Q = self.get_dynamics()[1]
                 model_stdev = T.sqrt(T.matrix_diag_part(Q))
                 info['rmse'] = rmse
-                info['model_stdev'] = model_stdev
-                encoder_stdev = T.sqrt(q_X.get_parameters('regular')[0])
-                info['encoder-stdev'] = encoder_stdev
+                info['model-stdev'] = model_stdev
             self.cache[(q_X, q_A)] = kl, info
         return self.cache[(q_X, q_A)]
 

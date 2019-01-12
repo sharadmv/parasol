@@ -85,6 +85,7 @@ class VAE(Model):
 
             self.elbo = T.mean(self.log_likelihood - self.prior_kl)
             train_elbo = T.mean(self.log_likelihood - self.beta * self.prior_kl)
+            T.core.summary.scalar("encoder-stdev", T.mean(self.S_potentials.get_parameters('regular')[0]))
             T.core.summary.scalar("log-likelihood", T.mean(self.log_likelihood))
             T.core.summary.scalar("prior-kl", T.mean(self.prior_kl))
             T.core.summary.scalar("beta", self.beta)

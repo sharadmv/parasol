@@ -14,8 +14,7 @@ class NoPrior(Prior):
 
     def kl_divergence(self, q_X, q_A, num_data):
         batch_size = T.shape(q_X.expected_value())[0]
-        encoder_stdev = T.sqrt(q_X.get_parameters('regular')[0])
-        return T.zeros(batch_size), {'encoder-stdev': encoder_stdev}
+        return T.zeros(batch_size), {}
 
     def has_dynamics(self):
         return False

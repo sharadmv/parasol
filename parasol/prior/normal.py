@@ -19,8 +19,7 @@ class Normal(Prior):
             T.ones(mu_shape),
             T.zeros(mu_shape)
         ])
-        encoder_stdev = T.sqrt(q_X.get_parameters('regular')[0])
-        return T.mean(T.sum(stats.kl_divergence(q_X, p_X), -1), 0), {'encoder-stdev': encoder_stdev}
+        return T.mean(T.sum(stats.kl_divergence(q_X, p_X), -1), 0), {}
 
     def has_dynamics(self):
         return False
