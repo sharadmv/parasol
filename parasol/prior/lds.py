@@ -27,6 +27,9 @@ class LDS(Dynamics):
         else:
             return q_X, q_A
 
+    def needs_filter(self):
+        return self.smooth
+
     def initialize_objective(self):
         H, ds, da = self.horizon, self.ds, self.da
         if self.time_varying:

@@ -56,9 +56,9 @@ class LQRFLM(Controller):
                 np.linalg.inv(S)
             )
 
-    def act(self, obs, t, noise=None):
+    def act(self, observations, controls, t, noise=None):
         K, k, S, cS, iS = self.policy_params
-        state, _ = self.model.encode(obs, np.zeros(self.da))
+        state, _ = self.model.filter(observations, controls, t)
         if noise is None:
             noise = np.random.randn(self.da)
         noise = np.einsum('ab,b->a', cS[t], noise)
@@ -83,15 +83,14 @@ class LQRFLM(Controller):
         dsa = ds + da
 
         states, actions = np.zeros((N, T, ds)), np.zeros((N, T, da))
+        chunk_size = 10
+        for idx, chunk in tqdm.tqdm(util.chunk(observations[:, :], controls[:, :],
+                                        chunk_size=chunk_size), desc='Encoding', total=N / chunk_size):
+            states[idx], actions[idx] = self.model.encode(chunk[0], chunk[1])
 
-        for t in tqdm.trange(T, desc='Encoding'):
-            for idx, chunk in util.chunk(observations[:, t], controls[:, t],
-                                         chunk_size=100):
-                states[idx, t], actions[idx, t] = self.model.encode(chunk[0], chunk[1])
-            if t == 0:
-                self.mu_s0 = np.mean(states[:, t], axis=0)
-                self.S_s0 = np.diag(np.maximum(np.var(states[:, t], axis=0),
-                                               1e-6))
+        self.mu_s0 = np.mean(states[:, 0], axis=0)
+        self.S_s0 = np.diag(np.maximum(np.var(states[:, 0], axis=0),
+                                        1e-6))
         if self.prior_type == 'gmm':
             gmm = DynamicsPriorGMM({
                 'max_samples': N, 'max_clusters': 20, 'min_samples_per_cluster': 40,

@@ -62,10 +62,33 @@ class VAE(Model):
             self.S_potentials = util.map_network(self.state_encoder)(self.O)
             self.A_potentials = util.map_network(self.action_encoder)(self.U)
 
+            if self.prior.needs_filter():
+                S_natparam = self.S_potentials.get_parameters('natural')
+                num_steps = T.shape(S_natparam)[1]
+
+                self.padded_S = stats.Gaussian(T.core.pad(
+                    self.S_potentials.get_parameters('natural'),
+                    [[0, 0], [0, self.horizon - num_steps], [0, 0], [0, 0]]
+                ), 'natural')
+                self.padded_A = stats.GaussianScaleDiag([
+                    T.core.pad(self.A_potentials.get_parameters('regular')[0],
+                            [[0, 0], [0, self.horizon - num_steps], [0, 0]]),
+                    T.core.pad(self.A_potentials.get_parameters('regular')[1],
+                            [[0, 0], [0, self.horizon - num_steps], [0, 0]])
+                ], 'regular')
+                self.q_S_padded, self.q_A_padded = self.prior.encode(
+                    self.padded_S, self.padded_A
+                )
+                self.q_S_filter = self.q_S_padded.filter(max_steps=num_steps)
+                self.q_A_filter = self.q_A_padded.__class__(
+                    self.q_A_padded.get_parameters('natural')[:, :num_steps]
+                , 'natural')
+                self.e_q_S_filter = self.q_S_filter.expected_value()
+                self.e_q_A_filter = self.q_A_filter.expected_value()
+
             (self.q_S, self.q_A), self.prior_kl, self.kl_grads, self.info = self.prior.posterior_kl_grads(
                 self.S_potentials, self.A_potentials, self.num_data
             )
-
 
             self.q_S_sample = self.q_S.sample()[0]
             self.q_A_sample = self.q_A.sample()[0]
@@ -216,23 +239,54 @@ class VAE(Model):
             with gfile.GFile(out_dir / "weights" / ("model-%s.pkl" % epoch), 'wb') as fp:
                 pickle.dump(self, fp)
 
+    def filter(self, o, u, t, sample=False):
+        leading_dim = o.shape[:-2]
+        if len(leading_dim) == 0:
+            o, u = o[None], u[None]
+        if sample:
+            if self.prior.needs_filter():
+                raise NotImplementedError
+            else:
+                s, a = self.session.run([self.q_S_sample, self.q_A_sample], {
+                    self.O: o[..., t:t + 1, :],
+                    self.U: u[..., t:t + 1, :],
+                })
+        else:
+            if self.prior.needs_filter():
+                s, a = self.session.run([self.e_q_S_filter, self.e_q_A_filter], {
+                    self.O: o[..., :t + 1, :],
+                    self.U: u[..., :t + 1, :],
+                })
+            else:
+                s, a = self.session.run([self.q_S.expected_value(), self.q_A.expected_value()], {
+                    self.O: o[..., t:t + 1, :],
+                    self.U: u[..., t:t + 1, :],
+                })
+        s, a = s[..., -1, :], a[..., -1, :]
+        if len(leading_dim) == 0:
+            s, a = s[0], a[0]
+        return s, a
+
     def encode(self, o, u, sample=False):
-        leading_dim = o.shape[:-1]
-        o = o[(None,) * (2 - len(leading_dim))]
-        u = u[(None,) * (2 - len(leading_dim))]
+        leading_dim = o.shape[:-2]
+        if len(leading_dim) == 0:
+            o, u = o[None], u[None]
         if sample:
             s, a = self.session.run([self.q_S_sample, self.q_A_sample], {
                 self.O: o,
-                self.U: u,
+                self.U: u
             })
         else:
             s, a = self.session.run([self.q_S.expected_value(), self.q_A.expected_value()], {
                 self.O: o,
-                self.U: u,
+                self.U: u
             })
-        return s.reshape(leading_dim + (-1,)), a.reshape(leading_dim + (-1,))
+        if len(leading_dim) == 0:
+            s, a = s[0], a[0]
+        return s, a
 
     def decode(self, s, sample=False):
+        raise NotImplementedError
         leading_dim = s.shape[:-1]
         s = s[(None,) * (2 - len(leading_dim))]
         if sample:

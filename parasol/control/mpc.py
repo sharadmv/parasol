@@ -23,8 +23,8 @@ class MPC(Controller):
     def initialize(self):
         pass
 
-    def act(self, obs, t, noise=None):
-        state, _ = self.model.encode(obs, np.zeros(self.model.du))
+    def act(self, observations, controls, t, noise=None):
+        state, _ = self.model.encode(observations, controls, t)
         horizon = min(self.horizon, self.model.horizon - t)
         action = self.cem_opt(state, horizon, iters=10)
         if noise is not None:

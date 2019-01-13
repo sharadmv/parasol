@@ -45,6 +45,9 @@ class Prior(object):
             'horizon': self.horizon,
         }
 
+    def needs_filter(self):
+        return False
+
     def __setstate__(self, state):
         self.__init__(state['ds'], state['da'], state['horizon'])
 

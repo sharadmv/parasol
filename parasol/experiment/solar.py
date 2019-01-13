@@ -105,9 +105,8 @@ class Solar(Experiment):
         random.seed(self.seed)
 
         def noise_function():
-            n = util.generate_noise((self.horizon, self.control.da),
-                                    smooth=self.smooth_noise)
-            return n
+            return util.generate_noise((self.horizon, self.control.da),
+                                        smooth=self.smooth_noise)
 
         replay_buffer = None
 
@@ -118,17 +117,18 @@ class Solar(Experiment):
             print("Iteration {}: ==================================================".format(i))
             with self.env.logging(out_dir / 'results.csv', verbose=True):
                 rollouts = self.env.rollouts(self.rollouts_per_iter, self.horizon,
-                                            policy=self.control.act,
-                                            callback=video_callback,
-                                            noise=noise_function,
-                                            show_progress=True)
+                                             policy=self.control.act,
+                                             callback=video_callback,
+                                             noise=noise_function,
+                                             show_progress=True)
             if replay_buffer is None:
                 replay_buffer = rollouts
             else:
                 replay_buffer = tuple(map(np.concatenate, zip(replay_buffer, rollouts)))
             replay_buffer = tuple(r[-self.buffer_size:] for r in replay_buffer)
             self.control.train(replay_buffer, i, out_dir=out_dir)
-            self.model.train(replay_buffer, out_dir=out_dir, **self.model_train_params)
+            self.model.train(replay_buffer, out_dir=out_dir,
+                             **self.model_train_params)
 
         def video_callback(j):
             if j < self.num_videos:

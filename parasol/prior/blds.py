@@ -10,7 +10,7 @@ class BayesianLDS(LDS):
     def initialize_objective(self):
         H, ds, da = self.horizon, self.ds, self.da
         if self.time_varying:
-            A = T.concatenate([H - 1, T.eye(ds), T.zeros([ds, da])], -1)
+            A = T.concatenate([T.eye(ds, batch_shape=[H - 1]), T.zeros([H - 1, ds, da])], -1)
             self.A_prior = stats.MNIW([
                 2 * T.eye(ds, batch_shape=[H - 1]), A,
                 T.eye(ds + da, batch_shape=[H - 1]),

@@ -100,15 +100,15 @@ class ParasolEnvironment(object):
         self.prev_obs = obs[:-1]
         return np.concatenate(obs, 0)
 
-    def rollout(self, num_steps, policy = None, render = False, show_progress =
-                False, init_std=1, noise=None):
+    def rollout(self, num_steps, policy=None, render=False,
+                show_progress=False, init_std=1, noise=None):
         if policy is None:
-            def policy(x, t, noise=None):
+            def policy(_, t, noise=None):
                 return np.random.normal(size=self.get_action_dim(), scale=init_std)
         states, actions, costs = (
-            np.empty([num_steps] + [self.get_state_dim()]),
-            np.empty([num_steps] + [self.get_action_dim()]),
-            np.empty([num_steps])
+            np.zeros([num_steps] + [self.get_state_dim()]),
+            np.zeros([num_steps] + [self.get_action_dim()]),
+            np.zeros([num_steps])
         )
         infos = collections.defaultdict(list)
         current_state = self.reset()
@@ -123,7 +123,7 @@ class ParasolEnvironment(object):
             n = None
             if noise is not None:
                 n = noise[t]
-            actions[t] = policy(states[t], t, noise=n)
+            actions[t] = policy(states, actions, t, noise=n)
             current_state, costs[t], done, info = self.step(actions[t])
             for k, v in info.items():
                 infos[k].append(v)

@@ -13,6 +13,9 @@ class NoModel(Model):
     def encode(self, y, a):
         return y, a
 
+    def filter(self, y, a, t):
+        return y[t], a[t]
+
     def decode(self, x):
         return x
 

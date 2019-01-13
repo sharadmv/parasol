@@ -38,9 +38,9 @@ class Experiment(object):
                 gfile.MakeDirs(out_dir)
             with gfile.GFile(out_dir / "params.json", 'w') as fp:
                 json.dump(self, fp)
-            self.initialize(out_dir)
             try:
                 with tee_out(out_dir):
+                    self.initialize(out_dir)
                     self.run_experiment(out_dir)
             except:
                 traceback.print_exc()
