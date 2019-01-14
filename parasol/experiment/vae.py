@@ -103,10 +103,9 @@ class TrainVAE(Experiment):
         random.seed(self.seed)
 
         def noise_function():
-            n = util.generate_noise((self.horizon, self.env.get_action_dim()),
-                                    std=self.data_params['init_std'],
-                                    smooth=self.data_params['smooth_noise'])
-            return n
+            return util.generate_noise((self.horizon, self.env.get_action_dim()),
+                                       std=self.data_params['init_std'],
+                                       smooth=self.data_params['smooth_noise'])
 
         if 'load_data' in self.data_params:
             print("Loading data:", self.data_params['load_data'])
@@ -115,7 +114,7 @@ class TrainVAE(Experiment):
         else:
             env = self.env
             num_rollouts = self.data_params['num_rollouts']
-            policy = lambda _, __, noise: noise
+            policy = lambda _, __, ___, noise: noise
 
             rollouts = env.rollouts(num_rollouts, self.horizon, policy=policy, noise=noise_function, show_progress=True)
         if self.dump_data and 'load_data' not in self.data_params:

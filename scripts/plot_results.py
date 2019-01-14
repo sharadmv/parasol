@@ -71,29 +71,31 @@ def plot_results(path, x_axis='episode_number', y_axis='total_cost',
                              > 1]) & param_columns - {'experiment_name',
                                                       aggregateby} | {x_axis})
     groups = data.groupby(list(groupable_columns))
-    fig, ax = plt.subplots()
+    y_axes = y_axis.split(",")
+    fig, axs = plt.subplots(len(y_axes))
     plot_groups = list(groupable_columns - {x_axis})
     colors = sns.color_palette()
-    if len(plot_groups) > 0:
-        results = groups[y_axis].describe()[['mean', 'std']].reset_index().set_index('episode_number').groupby(
-                                                plot_groups
-                                            )
-        for i, (group, data) in enumerate(results):
-            data = data[['mean', 'std']].rolling(10).mean().dropna(how='all').fillna(0)
-            ax.plot(data.index, data['mean'], label=str(group), color=colors[i],
+    for ax, y_axis in zip(axs, y_axes):
+        if len(plot_groups) > 0:
+            results = groups[y_axis].describe()[['mean', 'std']].reset_index().set_index('episode_number').groupby(
+                                                    plot_groups
+                                                )
+            for i, (group, data) in enumerate(results):
+                data = data[['mean', 'std']].rolling(10).mean().dropna(how='all').fillna(0)
+                ax.plot(data.index, data['mean'], label=str(group), color=colors[i],
+                        alpha=0.8)
+                ax.fill_between(data.index, data['mean'] - data['std'], data['mean'] +
+                                data['std'], color=colors[i], alpha=0.3)
+        else:
+            results = groups[y_axis].describe()[['mean', 'std']].reset_index().set_index('episode_number')
+            data = results[['mean', 'std']].rolling(10).mean().dropna(how='all').fillna(0)
+            ax.plot(data.index, data['mean'], color=colors[0],
                     alpha=0.8)
             ax.fill_between(data.index, data['mean'] - data['std'], data['mean'] +
-                            data['std'], color=colors[i], alpha=0.3)
-    else:
-        results = groups[y_axis].describe()[['mean', 'std']].reset_index().set_index('episode_number')
-        data = results[['mean', 'std']].rolling(10).mean().dropna(how='all').fillna(0)
-        ax.plot(data.index, data['mean'], color=colors[0],
-                alpha=0.8)
-        ax.fill_between(data.index, data['mean'] - data['std'], data['mean'] +
-                        data['std'], color=colors[0], alpha=0.3)
-    ax.legend(loc='best', title=','.join(plot_groups))
-    ax.set_xlabel(x_axis)
-    ax.set_ylabel(y_axis)
+                            data['std'], color=colors[0], alpha=0.3)
+        ax.legend(loc='best', title=','.join(plot_groups))
+        ax.set_xlabel(x_axis)
+        ax.set_ylabel(y_axis)
     plt.show()
 
 
