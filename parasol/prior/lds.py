@@ -23,11 +23,9 @@ class LDS(Dynamics):
             q_X = stats.LDS(
                 (self.sufficient_statistics(), state_prior, q_X, q_A.expected_value(), self.horizon)
             )
-            return q_X, q_A
-        else:
-            return q_X, q_A
+        return q_X, q_A
 
-    def needs_filter(self):
+    def is_filtering_prior(self):
         return self.smooth
 
     def initialize_objective(self):

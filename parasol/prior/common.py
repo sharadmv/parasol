@@ -23,8 +23,6 @@ class Prior(object):
         grads = self.kl_gradients(q_X, q_A, kl, num_data)
         return (q_X, q_A), kl, list(zip(self.get_parameters(), grads)), info
 
-    def has_natural_gradients(self):
-        return False
 
     @abstractmethod
     def kl_gradients(self, q_X, q_A, kl, num_data):
@@ -45,7 +43,10 @@ class Prior(object):
             'horizon': self.horizon,
         }
 
-    def needs_filter(self):
+    def is_filtering_prior(self):
+        return False
+
+    def is_dynamics_prior(self):
         return False
 
     def __setstate__(self, state):

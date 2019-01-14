@@ -64,8 +64,117 @@ class BayesianLDS(LDS):
                 T.tile(stats[3][None], [self.horizon - 1]),
             ]
 
-    def has_natural_gradients(self):
+    def is_dynamics_prior(self):
         return True
+
+    def posterior_dynamics(self, q_X, q_A, data_strength=1.0, max_iter=100):
+        if self.smooth:
+            if self.time_varying:
+                prior_dyn = stats.MNIW(
+                    self.A_variational.get_parameters('natural')
+                , 'natural')
+            else:
+                natparam = self.A_variational.get_parameters('natural')
+                prior_dyn = stats.MNIW([
+                    T.tile(natparam[0][None], [self.horizon - 1, 1, 1]),
+                    T.tile(natparam[1][None], [self.horizon - 1, 1, 1]),
+                    T.tile(natparam[2][None], [self.horizon - 1, 1, 1]),
+                    T.tile(natparam[3][None], [self.horizon - 1]),
+                ], 'natural')
+            state_prior = stats.Gaussian([
+                T.eye(self.ds),
+                T.zeros(self.ds)
+            ])
+            aaT, a = stats.Gaussian.unpack(q_A.expected_sufficient_statistics())
+            aaT, a = aaT[:, :-1], a[:, :-1]
+            ds, da = self.ds, self.da
+
+            initial_dyn_natparam = prior_dyn.get_parameters('natural')
+            initial_X_natparam = stats.LDS(
+                (self.sufficient_statistics(), state_prior, q_X, q_A.expected_value(), self.horizon)
+            , 'internal').get_parameters('natural')
+            def em(i, q_dyn_natparam, q_X_natparam, _, curr_elbo):
+                q_X_ = stats.LDS(q_X_natparam, 'natural')
+                ess = q_X_.expected_sufficient_statistics()
+                batch_size = T.shape(ess)[0]
+                yyT = ess[..., :-1, ds:2*ds, ds:2*ds]
+                xxT = ess[..., :-1, :ds, :ds]
+                yxT = ess[..., :-1, ds:2*ds, :ds]
+                x = ess[..., :-1, -1, :ds]
+                y = ess[..., :-1, -1, ds:2*ds]
+                xaT = T.outer(x, a)
+                yaT = T.outer(y, a)
+                xaxaT = T.concatenate([
+                    T.concatenate([xxT, xaT], -1),
+                    T.concatenate([T.matrix_transpose(xaT), aaT], -1),
+                ], -2)
+                ess = [
+                    yyT,
+                    T.concatenate([yxT, yaT], -1),
+                    xaxaT,
+                    T.ones([batch_size, self.horizon - 1])
+                ]
+                q_dyn_natparam = [
+                    T.sum(a, [0]) * data_strength + b for a, b in zip(
+                        ess,
+                        q_dyn_natparam
+                    )
+                ]
+                q_dyn_ = stats.MNIW(
+                    q_dyn_natparam
+                , 'natural')
+                q_stats = q_dyn_.expected_sufficient_statistics()
+                p_X = stats.LDS(
+                    (q_stats, state_prior, None, q_A.expected_value(), self.horizon)
+                )
+                q_X_ = stats.LDS(
+                    (q_stats, state_prior, q_X, q_A.expected_value(), self.horizon)
+                )
+                elbo = (T.sum(stats.kl_divergence(q_X_, p_X))
+                        + T.sum(stats.kl_divergence(q_dyn_, prior_dyn)))
+                return i + 1, q_dyn_.get_parameters('natural'), q_X_.get_parameters('natural'), curr_elbo, elbo
+            def cond(i, _, __, prev_elbo, curr_elbo):
+                prev_elbo = T.core.Print(prev_elbo, [i, prev_elbo, curr_elbo])
+                return T.logical_and(T.abs(curr_elbo - prev_elbo) > 1, i < max_iter)
+            result = T.while_loop(cond, em, [0, initial_dyn_natparam, initial_X_natparam, T.constant(-np.inf), T.constant(0.)], back_prop=False)
+            sigma, mu = stats.MNIW(result[1], 'natural').expected_value()
+            q_X = stats.LDS(result[2], 'natural')
+            return (mu, sigma), q_X
+        else:
+            q_Xt = q_X.__class__([
+                q_X.get_parameters('regular')[0][:, :-1],
+                q_X.get_parameters('regular')[1][:, :-1],
+            ])
+            q_At = q_A.__class__([
+                q_A.get_parameters('regular')[0][:, :-1],
+                q_A.get_parameters('regular')[1][:, :-1],
+            ])
+            q_Xt1 = q_X.__class__([
+                q_X.get_parameters('regular')[0][:, 1:],
+                q_X.get_parameters('regular')[1][:, 1:],
+            ])
+            (XtAt_XtAtT, XtAt), (Xt1_Xt1T, Xt1) = self.get_statistics(q_Xt, q_At, q_Xt1)
+            batch_size = T.shape(XtAt)[0]
+            ess = [
+                Xt1_Xt1T,
+                T.einsum('nha,nhb->nhba', XtAt, Xt1),
+                XtAt_XtAtT,
+                T.ones([batch_size, self.horizon - 1])
+            ]
+            if self.time_varying:
+                posterior = stats.MNIW([
+                    T.sum(a, [0]) * data_strength + b for a, b in zip(
+                        ess, self.A_variational.get_parameters('natural')
+                    )
+                ], 'natural')
+            else:
+                posterior = stats.MNIW([
+                    T.sum(a, [0]) * data_strength + b[None] for a, b in zip(
+                        ess, self.A_variational.get_parameters('natural')
+                    )
+                ], 'natural')
+            Q, A = posterior.expected_value()
+            return (A, Q), q_X
 
     def get_parameters(self):
         return self.A_variational.get_parameters('natural')

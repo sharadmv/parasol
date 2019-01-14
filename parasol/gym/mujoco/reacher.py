@@ -22,8 +22,8 @@ class GymReacher(mujoco_env.MujocoEnv, utils.EzPickle):
 
     def reward(self, x, a):
         if self.easy_cost:
-            reward_dist = - np.square(x).sum()
-            reward_ctrl = - np.square(a).sum()
+            reward_dist = - np.square(x).sum() * 10
+            reward_ctrl = - np.square(a).sum() * 1e-2
             dist = np.linalg.norm(x)
         else:
             reward_dist = - np.linalg.norm(x)
@@ -108,6 +108,8 @@ class Reacher(GymWrapper):
         super(Reacher, self).__init__(config)
 
     def torque_matrix(self):
+        if self.easy_cost:
+            return 2 * np.eye(self.get_action_dim()) * 1e-2
         return 2 * np.eye(self.get_action_dim())
 
     def make_summary(self, observations, name):
@@ -122,7 +124,7 @@ class Reacher(GymWrapper):
         if self.image:
             return [self.image_dim, self.image_dim, 3]
         return None
-    
+
     def cost_fn(self, s, a):
         return np.linalg.norm(s[:,-3:], axis=-1) + np.sum(np.square(a), axis=-1)
 

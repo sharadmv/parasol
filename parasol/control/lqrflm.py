@@ -15,6 +15,7 @@ class LQRFLM(Controller):
     control_type = 'lqrflm'
 
     def __init__(self, model, env, horizon, kl_step=2.0, init_std=1.0, diag_cost=False,
+                 data_strength = 1.0,
                  linearize_policy = False,
                  pd_cost = False,
                  prior_type='gmm'):
@@ -28,6 +29,7 @@ class LQRFLM(Controller):
         self.horizon = horizon
         self.diag_cost = diag_cost
         self.prior_type = prior_type
+        self.data_strength = data_strength
         self.pd_cost = pd_cost
         self.linearize_policy = linearize_policy
         self.initialize()
@@ -82,38 +84,48 @@ class LQRFLM(Controller):
         T, ds, da = self.horizon, self.ds, self.da
         dsa = ds + da
 
-        states, actions = np.zeros((N, T, ds)), np.zeros((N, T, da))
-        chunk_size = 10
-        for idx, chunk in tqdm.tqdm(util.chunk(observations[:, :], controls[:, :],
-                                        chunk_size=chunk_size), desc='Encoding', total=N / chunk_size):
-            states[idx], actions[idx] = self.model.encode(chunk[0], chunk[1])
 
-        self.mu_s0 = np.mean(states[:, 0], axis=0)
-        self.S_s0 = np.diag(np.maximum(np.var(states[:, 0], axis=0),
-                                        1e-6))
-        if self.prior_type == 'gmm':
+        if self.prior_type == 'model':
+            assert self.model.prior.is_dynamics_prior()
+            posterior_dynamics, states = self.model.posterior_dynamics(rollouts, data_strength=self.data_strength)
+            self.D, self.d, self.S_D = posterior_dynamics[0], np.zeros((T, ds)), posterior_dynamics[1]
+            actions = controls
+            self.mu_s0 = np.mean(states[:, 0], axis=0)
+            self.S_s0 = np.diag(np.maximum(np.var(states[:, 0], axis=0),
+                                            1e-6))
+            import ipdb; ipdb.set_trace()
+        elif self.prior_type == 'gmm':
+            states, actions = np.zeros((N, T, ds)), np.zeros((N, T, da))
+            chunk_size = 10
+            for idx, chunk in tqdm.tqdm(util.chunk(observations[:, :], controls[:, :],
+                                            chunk_size=chunk_size), desc='Encoding', total=N / chunk_size):
+                states[idx], actions[idx] = self.model.encode(chunk[0], chunk[1])
+            self.mu_s0 = np.mean(states[:, 0], axis=0)
+            self.S_s0 = np.diag(np.maximum(np.var(states[:, 0], axis=0),
+                                            1e-6))
+
             gmm = DynamicsPriorGMM({
                 'max_samples': N, 'max_clusters': 20, 'min_samples_per_cluster': 40,
             })
             gmm.update(states, actions)
 
-        self.D, self.d = np.zeros((T, ds, ds+da)), np.zeros((T, ds))
-        self.S_D = np.zeros((T, ds, ds))
-        for t in tqdm.trange(T, desc='Fitting dynamics'):
-            if t < T - 1:
-                SAS_ = np.concatenate(
-                        [states[:, t], actions[:, t], states[:, t+1]], axis=-1,
-                )
-                if self.prior_type == 'mdl':
-                    raise NotImplementedError
-                elif self.prior_type == 'gmm':
-                    prior = gmm.eval(ds, da, SAS_)
-                else:
-                    prior = None
-                self.D[t], self.d[t], self.S_D[t] = util.linear_fit(
-                        SAS_, slice(ds+da), slice(ds+da, ds+da+ds), prior=prior,
-                )
-                self.S_D[t] = 0.5 * (self.S_D[t] + self.S_D[t].T)
+            self.D, self.d = np.zeros((T, ds, ds+da)), np.zeros((T, ds))
+            self.S_D = np.zeros((T, ds, ds))
+            for t in tqdm.trange(T, desc='Fitting dynamics'):
+                if t < T - 1:
+                    SAS_ = np.concatenate(
+                            [states[:, t], actions[:, t], states[:, t+1]], axis=-1,
+                    )
+                    if self.prior_type == 'mdl':
+                        raise NotImplementedError
+                    elif self.prior_type == 'gmm':
+                        prior = gmm.eval(ds, da, SAS_)
+                    else:
+                        prior = None
+                    self.D[t], self.d[t], self.S_D[t] = util.linear_fit(
+                            SAS_, slice(ds+da), slice(ds+da, ds+da+ds), prior=prior,
+                    )
+                    self.S_D[t] = 0.5 * (self.S_D[t] + self.S_D[t].T)
         self.C = np.zeros([self.ds + self.da, self.ds + self.da])
         self.c = np.zeros([self.ds + self.da])
         if self.pd_cost:

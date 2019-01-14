@@ -53,6 +53,7 @@ class VAE(Model):
             self.state, self.action = T.placeholder(T.floatx(), [None, self.ds]), T.placeholder(T.floatx(), [None, self.da])
             if self.prior.has_dynamics():
                 self.next_state = self.prior.next_state(self.state, self.action, self.t)
+                self.prior_dynamics = self.prior.get_dynamics()
 
             self.num_data = T.scalar()
             self.beta = T.placeholder(T.floatx(), [])
@@ -62,7 +63,12 @@ class VAE(Model):
             self.S_potentials = util.map_network(self.state_encoder)(self.O)
             self.A_potentials = util.map_network(self.action_encoder)(self.U)
 
-            if self.prior.needs_filter():
+            if self.prior.is_dynamics_prior():
+                self.data_strength = T.placeholder(T.floatx(), [])
+                pd, encodings = self.prior.posterior_dynamics(self.S_potentials, self.A_potentials, data_strength = self.data_strength)
+                self.posterior_dynamics_ = pd, encodings.expected_value()
+
+            if self.prior.is_filtering_prior():
                 S_natparam = self.S_potentials.get_parameters('natural')
                 num_steps = T.shape(S_natparam)[1]
 
@@ -123,8 +129,6 @@ class VAE(Model):
                 + self.action_decoder.get_parameters()
             )
             if len(neural_params) > 0:
-                # self.neural_op = T.core.train.AdamOptimizer(self.learning_rate).minimize(-train_elbo,
-                                                                                        # var_list=neural_params)
                 optimizer = T.core.train.AdamOptimizer(self.learning_rate)
                 gradients, variables = zip(*optimizer.compute_gradients(-train_elbo, var_list=neural_params))
                 gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
@@ -132,7 +136,7 @@ class VAE(Model):
             else:
                 self.neural_op = T.core.no_op()
             if len(self.kl_grads) > 0:
-                if self.prior.has_natural_gradients():
+                if self.prior.is_dynamics_prior():
                     # opt = lambda x: T.core.train.MomentumOptimizer(x, 0.5)
                     opt = lambda x: T.core.train.GradientDescentOptimizer(x)
                 else:
@@ -244,7 +248,7 @@ class VAE(Model):
         if len(leading_dim) == 0:
             o, u = o[None], u[None]
         if sample:
-            if self.prior.needs_filter():
+            if self.prior.is_filtering_prior():
                 raise NotImplementedError
             else:
                 s, a = self.session.run([self.q_S_sample, self.q_A_sample], {
@@ -252,7 +256,7 @@ class VAE(Model):
                     self.U: u[..., t:t + 1, :],
                 })
         else:
-            if self.prior.needs_filter():
+            if self.prior.is_filtering_prior():
                 s, a = self.session.run([self.e_q_S_filter, self.e_q_A_filter], {
                     self.O: o[..., :t + 1, :],
                     self.U: u[..., :t + 1, :],
@@ -300,7 +304,18 @@ class VAE(Model):
         return o.reshape(leading_dim + (-1,))
 
     def get_dynamics(self):
-        return self.session.run(self.prior.get_dynamics())
+        return self.session.run(self.prior_dynamics)
+
+    def get_prior_parameters(self):
+        return self.session.run(self.prior.get_parameters())
+
+    def posterior_dynamics(self, rollouts, data_strength=1.0):
+        assert self.prior.is_dynamics_prior()
+        return self.session.run(self.posterior_dynamics_, {
+            self.O: rollouts[0],
+            self.U: rollouts[1],
+            self.data_strength: data_strength,
+        })
 
     def has_dynamics(self):
         return self.prior.has_dynamics()
