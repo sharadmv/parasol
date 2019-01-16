@@ -135,7 +135,7 @@ class Solar(Experiment):
                 return self.env.video(out_dir / 'videos' / 'final-{}.mp4'.format(j + 1))
         with self.env.logging(out_dir / 'results.csv', verbose=True):
             rollouts = self.env.rollouts(self.rollouts_per_iter, self.horizon,
-                                        policy=self.control.act,
-                                        callback=video_callback,
-                                        noise=noise_function,
-                                        show_progress=True)
+                                         policy=self.control.act,
+                                         callback=video_callback,
+                                         noise=noise_function,
+                                         show_progress=True)
