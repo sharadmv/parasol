@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "2eeac3016a3510e457cede0c2a0bb751f38ae5b1bb22a4406e649316e53e3563"
+            "sha256": "55d6dc1232b025c4d30b9c7a2d7f48a666c70317a6d1a50a06e6c7464ba83a28"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -76,18 +76,18 @@
         },
         "boto3": {
             "hashes": [
-                "sha256:0e25dd84d0e97c32200103588b8e935c8fba887b96beb955b222be5ddf380cd4",
-                "sha256:3539636d0c883b9dfc0188bec3a1016cb6da1cdf3d4a4d77b54260b10a8d6e65"
+                "sha256:8f02aebdbb274d1be3af1e6c117865afa97a34a6810a304e079beab5827c7614",
+                "sha256:b131da6494d5036a2768fcea56fb9891bff7eb6b8faaa7dce93e939f50382b1c"
             ],
             "index": "pypi",
-            "version": "==1.9.77"
+            "version": "==1.9.78"
         },
         "botocore": {
             "hashes": [
-                "sha256:0fea3d60ed866cb622b34c2b1bff0e7b9ebcde6be5e0f6769f354f2ed5c9a602",
-                "sha256:e1c9dfbf52e430b2cce7a90b539f97cf4587dffeff535c243c42d97323fa1bdc"
+                "sha256:2cdf5519ddab95774248a002c24fbd804b5e5b44ed1c25497d34b34a06e9f84a",
+                "sha256:bd0b042dded14c7b2978d13dd8088f10f05f9e12382e882e03694e9131185358"
             ],
-            "version": "==1.12.77"
+            "version": "==1.12.78"
         },
         "box2d-py": {
             "hashes": [
@@ -232,11 +232,8 @@
             "version": "==4.3.0"
         },
         "deepx": {
-            "hashes": [
-                "sha256:6cabb900b6a0e12d0a3bbafadbaf4e63c741ce07b71bb3d239aaa638ae64291f"
-            ],
-            "index": "pypi",
-            "version": "==0.4.14"
+            "editable": true,
+            "path": "./../../hack/deepx"
         },
         "defusedxml": {
             "hashes": [
@@ -1184,11 +1181,11 @@
         },
         "tqdm": {
             "hashes": [
-                "sha256:79420109a762f82e20e8ecdc3b3bc1bc6c6536884a8de5fa86a50eb99386376a",
-                "sha256:7fa801cf60e318bf7d2ac7498254df0f3d7a3ad23c622ae63666257d5f833967"
+                "sha256:b856be5cb6cfaee3b2733655c7c5bbc7751291bb5d1a4f54f020af4727570b3e",
+                "sha256:c9b9b5eeba13994a4c266aae7eef7aeeb0ba2973e431027e942b4faea139ef49"
             ],
             "index": "pypi",
-            "version": "==4.29.0"
+            "version": "==4.29.1"
         },
         "traitlets": {
             "hashes": [

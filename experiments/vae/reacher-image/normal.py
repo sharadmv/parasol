@@ -4,8 +4,8 @@ import parasol.gym as gym
 
 env_params = {
     "environment_name": "Reacher",
-    "random_start": True,
-    "random_target": True,
+    "random_start": False,
+    "random_target": False,
     "image": True,
     "image_dim": 64,
 }
@@ -34,30 +34,35 @@ experiment = dict(
         action_encoder=nn.IdentityVariance(variance=1e-4),
         action_decoder=nn.IdentityVariance(variance=1e-4),
         prior=sweep([
-            dict(prior_type='lds', smooth=True),
-            dict(prior_type='lds', smooth=False),
-            dict(prior_type='blds', smooth=True),
-            dict(prior_type='blds', smooth=False),
-        ], ['lds', 'lds-smooth', 'blds', 'blds-smooth'])
+            dict(prior_type='lds', smooth=True, time_varying=True),
+            dict(prior_type='lds', smooth=False, time_varying=True),
+            # dict(prior_type='blds', smooth=True, time_varying=True),
+            # dict(prior_type='blds', smooth=False, time_varying=True),
+            # dict(prior_type='normal'),
+            # dict(prior_type='none'),
+        ], ['lds-tv-smooth', 'lds-tv'])
+        # prior=dict(prior_type='lds', smooth=True, time_varying=True)
     ),
     train=dict(
-        num_epochs=2000,
-        learning_rate=1e-4,
-        model_learning_rate=1e-5,
-        beta_start=1e-5,
+        num_epochs=1000,
+        learning_rate=1e-3,
+        model_learning_rate=1e-3 * horizon,
+        beta_start=1e-4,
         beta_end=10.0,
-        beta_rate=2e-4,
-        beta_increase=500,
+        beta_rate=5e-5,
+        beta_increase=0,
         batch_size=2,
-        dump_every=200,
-        summary_every=400,
+        dump_every=100,
+        summary_every=50,
     ),
     data=dict(
         num_rollouts=100,
         init_std=0.5,
+        smooth_noise=False,
     ),
     dump_data=True,
     seed=0,
-    out_dir='s3://parasol-experiments/vae/reacher-image-smooth',
+    out_dir='s3://parasol-experiments/vae/reacher-image-single-target',
+    # out_dir='data/vae/reacher-image/reacher-image-stable',
 )
-run(experiment, remote=True, gpu=True, num_threads=1, instance_type='g3.4xlarge')
+run(experiment, remote=True, gpu=False, num_threads=1, instance_type='m5.4xlarge')

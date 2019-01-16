@@ -22,8 +22,8 @@ class GymReacher(mujoco_env.MujocoEnv, utils.EzPickle):
 
     def reward(self, x, a):
         if self.easy_cost:
-            reward_dist = - np.square(x).sum() * 10
-            reward_ctrl = - np.square(a).sum() * 1e-2
+            reward_dist = - np.square(x).sum()
+            reward_ctrl = - np.square(a).sum()
             dist = np.linalg.norm(x)
         else:
             reward_dist = - np.linalg.norm(x)
