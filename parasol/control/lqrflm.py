@@ -93,7 +93,6 @@ class LQRFLM(Controller):
             self.mu_s0 = np.mean(states[:, 0], axis=0)
             self.S_s0 = np.diag(np.maximum(np.var(states[:, 0], axis=0),
                                             1e-6))
-            import ipdb; ipdb.set_trace()
         elif self.prior_type == 'gmm':
             states, actions = np.zeros((N, T, ds)), np.zeros((N, T, da))
             chunk_size = 10

@@ -1,3 +1,4 @@
+import tqdm
 import numpy as np
 from deepx import T, stats
 from scipy.ndimage import filters
@@ -36,6 +37,7 @@ def map_network(network):
 def chunk(*data, **kwargs):
     chunk_size = kwargs.pop('chunk_size', 100)
     shuffle = kwargs.pop('shuffle', False)
+    show_progress = kwargs.pop('show_progress', None)
     N = len(data[0])
     if shuffle:
         permutation = np.random.permutation(N)
@@ -44,7 +46,8 @@ def chunk(*data, **kwargs):
     num_chunks = N // chunk_size
     if N % chunk_size > 0:
         num_chunks += 1
-    for c in range(num_chunks):
+    rng = tqdm.trange(num_chunks, desc=show_progress) if show_progress is not None else range(num_chunks)
+    for c in rng:
         chunk_slice = slice(c * chunk_size, (c + 1) * chunk_size)
         idx = permutation[chunk_slice]
         yield idx, tuple(d[idx] for d in data)
@@ -59,3 +62,11 @@ def generate_noise(dims, std=1.0, smooth=False):
         emp_std = np.std(noise, axis=0)
         noise = std * (noise / emp_std)
     return noise
+
+def chunk_map(f, *data, **kwargs):
+    results = []
+    for ch in chunk(*data, **kwargs):
+        result = f(ch[0], *ch[1])
+        num_result = len(result)
+        results.append(result)
+    return [np.concatenate([r[i] for r in results]) for i in range(num_result)]

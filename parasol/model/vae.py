@@ -276,15 +276,18 @@ class VAE(Model):
         if len(leading_dim) == 0:
             o, u = o[None], u[None]
         if sample:
-            s, a = self.session.run([self.q_S_sample, self.q_A_sample], {
-                self.O: o,
-                self.U: u
-            })
+            def encode_chunk(_, o, u):
+                return self.session.run([self.q_S_sample, self.q_A_sample], {
+                    self.O: o,
+                    self.U: u
+                })
         else:
-            s, a = self.session.run([self.q_S.expected_value(), self.q_A.expected_value()], {
-                self.O: o,
-                self.U: u
-            })
+            def encode_chunk(_, o, u):
+                return self.session.run([self.q_S.expected_value(), self.q_A.expected_value()], {
+                    self.O: o,
+                    self.U: u
+                })
+        s, a = util.chunk_map(encode_chunk, o, u, show_progress="Encoding")
         if len(leading_dim) == 0:
             s, a = s[0], a[0]
         return s, a
