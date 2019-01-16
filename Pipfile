@@ -26,7 +26,7 @@ fabric = "*"
 pandas = "*"
 gps = {git = "https://github.com/sharadmv/gps.git",editable = true}
 click = "*"
-deepx = {path = "./../../hack/deepx", editable = true}
+deepx = "*"
 tensorflow-probability = "*"
 
 [requires]
