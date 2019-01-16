@@ -26,8 +26,8 @@ class GymPendulum(gym.Env):
 
         # modify from original gym env for (potential) images
         if self.image:
-            image_size = self.image_dim ** 2 * 3
-            self.observation_space = spaces.Box(low=np.zeros(image_size), high=np.ones(image_size), dtype=np.float32)
+            obs_size = self.image_dim ** 2 * 3 * (self.sliding_window + 1)
+            self.observation_space = spaces.Box(low=np.zeros(obs_size), high=np.ones(obs_size), dtype=np.float32)
         else:
             high = np.array([1., 1., self.max_speed])
             self.observation_space = spaces.Box(low=-high, high=high, dtype=np.float32)
@@ -61,6 +61,8 @@ class GymPendulum(gym.Env):
         return self._get_obs(), -costs, False, {}
 
     def reset(self):
+        if self.sliding_window:
+            self._prev_img = None
         # modify from original gym env to fix starting state
         high = np.array([0.01, 0.01])
         self.state = self.np_random.uniform(low=-high, high=high) + np.array([np.pi, 0])
@@ -69,8 +71,16 @@ class GymPendulum(gym.Env):
 
     def _get_obs(self):
         if self.image:
-            img = self.render(mode='rgb_array')
-            return (cv2.resize(img, (self.image_dim, self.image_dim), interpolation=cv2.INTER_LINEAR) / 255).flatten()
+            img = cv2.resize(self.render(mode='rgb_array'),
+                             (self.image_dim, self.image_dim),
+                             interpolation=cv2.INTER_LINEAR) / 255
+            if self.sliding_window:
+                if not self._prev_img:
+                    self._prev_img = [img] * self.sliding_window
+                obs = [img] + self._prev_img
+                self._prev_img = obs[:-1]
+                return np.concatenate(obs, axis=-1).flatten()
+            return img.flatten()
         theta, thetadot = self.state
         return np.array([np.cos(theta), np.sin(theta), thetadot])
 
