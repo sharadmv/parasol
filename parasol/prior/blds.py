@@ -67,7 +67,7 @@ class BayesianLDS(LDS):
     def is_dynamics_prior(self):
         return True
 
-    def posterior_dynamics(self, q_X, q_A, data_strength=1.0, max_iter=100):
+    def posterior_dynamics(self, q_X, q_A, data_strength=1.0, max_iter=200, tol=1e-3):
         if self.smooth:
             if self.time_varying:
                 prior_dyn = stats.MNIW(
@@ -117,7 +117,7 @@ class BayesianLDS(LDS):
                 q_dyn_natparam = [
                     T.sum(a, [0]) * data_strength + b for a, b in zip(
                         ess,
-                        q_dyn_natparam
+                        initial_dyn_natparam
                     )
                 ]
                 q_dyn_ = stats.MNIW(
@@ -134,12 +134,14 @@ class BayesianLDS(LDS):
                         + T.sum(stats.kl_divergence(q_dyn_, prior_dyn)))
                 return i + 1, q_dyn_.get_parameters('natural'), q_X_.get_parameters('natural'), curr_elbo, elbo
             def cond(i, _, __, prev_elbo, curr_elbo):
-                prev_elbo = T.core.Print(prev_elbo, [i, prev_elbo, curr_elbo])
-                return T.logical_and(T.abs(curr_elbo - prev_elbo) > 1, i < max_iter)
+                with T.core.control_dependencies([T.core.print(curr_elbo)]):
+                    prev_elbo = T.core.identity(prev_elbo)
+                return T.logical_and(T.abs(curr_elbo - prev_elbo) > tol, i < max_iter)
             result = T.while_loop(cond, em, [0, initial_dyn_natparam, initial_X_natparam, T.constant(-np.inf), T.constant(0.)], back_prop=False)
-            sigma, mu = stats.MNIW(result[1], 'natural').expected_value()
+            pd = stats.MNIW(result[1], 'natural')
+            sigma, mu = pd.expected_value()
             q_X = stats.LDS(result[2], 'natural')
-            return (mu, sigma), q_X
+            return ((mu, sigma), pd.expected_sufficient_statistics()), (q_X, q_A)
         else:
             q_Xt = q_X.__class__([
                 q_X.get_parameters('regular')[0][:, :-1],

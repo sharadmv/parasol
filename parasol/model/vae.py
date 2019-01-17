@@ -63,12 +63,21 @@ class VAE(Model):
             self.S_potentials = util.map_network(self.state_encoder)(self.O)
             self.A_potentials = util.map_network(self.action_encoder)(self.U)
 
+            if self.prior.has_dynamics():
+                self.prior_dynamics_stats = self.prior.sufficient_statistics()
+
             if self.prior.is_dynamics_prior():
                 self.data_strength = T.placeholder(T.floatx(), [])
-                pd, encodings = self.prior.posterior_dynamics(self.S_potentials, self.A_potentials, data_strength = self.data_strength)
-                self.posterior_dynamics_ = pd, encodings.expected_value()
+                posterior_dynamics, (encodings, actions) = self.prior.posterior_dynamics(self.S_potentials, self.A_potentials, data_strength = self.data_strength)
+                self.posterior_dynamics_ = posterior_dynamics, (encodings.expected_value(), actions.expected_value())
 
             if self.prior.is_filtering_prior():
+                self.dynamics_stats = (
+                    T.placeholder(T.floatx(), [None, self.ds, self.ds]),
+                    T.placeholder(T.floatx(), [None, self.ds, self.ds + self.da]),
+                    T.placeholder(T.floatx(), [None, self.ds + self.da, self.ds + self.da]),
+                    T.placeholder(T.floatx(), [None]),
+                )
                 S_natparam = self.S_potentials.get_parameters('natural')
                 num_steps = T.shape(S_natparam)[1]
 
@@ -83,7 +92,8 @@ class VAE(Model):
                             [[0, 0], [0, self.horizon - num_steps], [0, 0]])
                 ], 'regular')
                 self.q_S_padded, self.q_A_padded = self.prior.encode(
-                    self.padded_S, self.padded_A
+                    self.padded_S, self.padded_A,
+                    dynamics_stats=self.dynamics_stats
                 )
                 self.q_S_filter = self.q_S_padded.filter(max_steps=num_steps)
                 self.q_A_filter = self.q_A_padded.__class__(
@@ -243,7 +253,7 @@ class VAE(Model):
             with gfile.GFile(out_dir / "weights" / ("model-%s.pkl" % epoch), 'wb') as fp:
                 pickle.dump(self, fp)
 
-    def filter(self, o, u, t, sample=False):
+    def filter(self, o, u, t, sample=False, dynamics=None):
         leading_dim = o.shape[:-2]
         if len(leading_dim) == 0:
             o, u = o[None], u[None]
@@ -257,10 +267,19 @@ class VAE(Model):
                 })
         else:
             if self.prior.is_filtering_prior():
-                s, a = self.session.run([self.e_q_S_filter, self.e_q_A_filter], {
-                    self.O: o[..., :t + 1, :],
-                    self.U: u[..., :t + 1, :],
-                })
+                if dynamics is None:
+                    s, a = self.session.run([self.e_q_S_filter, self.e_q_A_filter], {
+                        self.O: o[..., :t + 1, :],
+                        self.U: u[..., :t + 1, :],
+                        self.dynamics_stats: self.session.run(self.prior_dynamics_stats)
+                    })
+                else:
+                    s, a = self.session.run([self.e_q_S_filter, self.e_q_A_filter], {
+                        self.O: o[..., :t + 1, :],
+                        self.U: u[..., :t + 1, :],
+                        self.dynamics_stats: dynamics
+                        # self.dynamics_stats: self.session.run(self.prior_dynamics_stats)
+                    })
             else:
                 s, a = self.session.run([self.q_S.expected_value(), self.q_A.expected_value()], {
                     self.O: o[..., t:t + 1, :],

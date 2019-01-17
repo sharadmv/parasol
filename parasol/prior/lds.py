@@ -14,14 +14,16 @@ class LDS(Dynamics):
         self.cache = {}
         self.initialize_objective()
 
-    def encode(self, q_X, q_A):
+    def encode(self, q_X, q_A, dynamics_stats=None):
         if self.smooth:
             state_prior = stats.Gaussian([
                 T.eye(self.ds),
                 T.zeros(self.ds)
             ])
+            if dynamics_stats is None:
+                dynamics_stats = self.sufficient_statistics()
             q_X = stats.LDS(
-                (self.sufficient_statistics(), state_prior, q_X, q_A.expected_value(), self.horizon)
+                (dynamics_stats, state_prior, q_X, q_A.expected_value(), self.horizon)
             )
         return q_X, q_A
 

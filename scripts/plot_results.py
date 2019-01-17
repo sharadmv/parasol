@@ -1,3 +1,4 @@
+import fnmatch
 import tqdm
 import seaborn as sns
 sns.set_style('white')
@@ -30,8 +31,11 @@ def find_files(path, name):
         for p in files:
             yield from find_files(path / p, name)
     else:
-        for p in gfile.Glob(path):
-            p = Path(p)
+        for p in gfile.ListDirectory(path.parent):
+            if not fnmatch.fnmatch(path.parent / p, path.replace('[', 'asdf').replace(']', 'fdsa').replace('asdf', '[[]').replace('fdsa', '[]]')):
+                continue
+            print(p)
+            p = Path(path.parent / p)
             if p == path:
                 continue
             yield from find_files(p, name)

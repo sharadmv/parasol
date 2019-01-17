@@ -32,6 +32,7 @@ class LQRFLM(Controller):
         self.data_strength = data_strength
         self.pd_cost = pd_cost
         self.linearize_policy = linearize_policy
+        self.dynamics_stats = None
         self.initialize()
 
     def initialize(self):
@@ -60,7 +61,7 @@ class LQRFLM(Controller):
 
     def act(self, observations, controls, t, noise=None):
         K, k, S, cS, iS = self.policy_params
-        state, _ = self.model.filter(observations, controls, t)
+        state, _ = self.model.filter(observations, controls, t, dynamics=self.dynamics_stats)
         if noise is None:
             noise = np.random.randn(self.da)
         noise = np.einsum('ab,b->a', cS[t], noise)
@@ -87,9 +88,8 @@ class LQRFLM(Controller):
 
         if self.prior_type == 'model':
             assert self.model.prior.is_dynamics_prior()
-            posterior_dynamics, states = self.model.posterior_dynamics(rollouts, data_strength=self.data_strength)
+            (posterior_dynamics, self.dynamics_stats), (states, actions) = self.model.posterior_dynamics(rollouts, data_strength=self.data_strength)
             self.D, self.d, self.S_D = posterior_dynamics[0], np.zeros((T, ds)), posterior_dynamics[1]
-            actions = controls
             self.mu_s0 = np.mean(states[:, 0], axis=0)
             self.S_s0 = np.diag(np.maximum(np.var(states[:, 0], axis=0),
                                             1e-6))
