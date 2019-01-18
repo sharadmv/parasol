@@ -6,18 +6,24 @@ import tqdm
 from deepx import T, stats
 
 from parasol import util
-from parasol.prior import Normal, NNDS, LDS, BayesianLDS, NoPrior
+import parasol.prior as prior
+import parasol.cost as cost
 
 from .common import Model
 
 gfile = tf.gfile
 
 PRIOR_MAP = {
-    'nnds': NNDS,
-    'normal': Normal,
-    'lds': LDS,
-    'blds': BayesianLDS,
-    'none': NoPrior,
+    'nnds': prior.NNDS,
+    'normal': prior.Normal,
+    'lds': prior.LDS,
+    'blds': prior.BayesianLDS,
+    'none': prior.NoPrior,
+}
+
+COST_MAP = {
+    'quadratic': cost.Quadratic,
+    'none': cost.NoCost,
 }
 
 class VAE(Model):
@@ -26,7 +32,7 @@ class VAE(Model):
                  ds, da,
                  state_encoder, state_decoder,
                  action_encoder, action_decoder,
-                 prior):
+                 prior, cost=None):
         super(VAE, self).__init__(do, du, horizon)
         self.ds, self.da = ds, da
         self.state_encoder = copy.deepcopy(state_encoder)
@@ -36,6 +42,9 @@ class VAE(Model):
         self.prior_params = prior
         if self.prior_params is None:
             self.prior_params = {'prior_type': 'none'}
+        self.cost_params = cost
+        if self.cost_params is None:
+            self.cost_params = {'cost_type': 'none'}
 
     def initialize(self):
         self.graph = T.core.Graph()
@@ -44,8 +53,13 @@ class VAE(Model):
             prior_type = prior_params.pop('prior_type')
             self.prior = PRIOR_MAP[prior_type](self.ds, self.da, self.horizon, **prior_params)
 
+            cost_params = self.cost_params.copy()
+            cost_type = cost_params.pop('cost_type')
+            self.cost = COST_MAP[cost_type](self.ds, self.da, **cost_params)
+
             self.O = T.placeholder(T.floatx(), [None, None, self.do])
             self.U = T.placeholder(T.floatx(), [None, None, self.du])
+            self.C = T.placeholder(T.floatx(), [None, None])
             self.S = T.placeholder(T.floatx(), [None, None, self.ds])
             self.A = T.placeholder(T.floatx(), [None, None, self.da])
 
@@ -119,12 +133,14 @@ class VAE(Model):
             self.q_O__sample = self.q_O_.sample()[0]
             self.q_U__sample = self.q_U_.sample()[0]
 
+            self.cost_likelihood = self.cost.log_likelihood(self.q_S_sample, self.C)
             self.log_likelihood = T.sum(self.q_O.log_likelihood(self.O), axis=1)
 
-            self.elbo = T.mean(self.log_likelihood - self.prior_kl)
-            train_elbo = T.mean(self.log_likelihood - self.beta * self.prior_kl)
+            self.elbo = T.mean(self.log_likelihood + self.cost_likelihood - self.prior_kl)
+            train_elbo = T.mean(self.log_likelihood + self.beta * (self.cost_likelihood - self.prior_kl))
             T.core.summary.scalar("encoder-stdev", T.mean(self.S_potentials.get_parameters('regular')[0]))
             T.core.summary.scalar("log-likelihood", T.mean(self.log_likelihood))
+            T.core.summary.scalar("cost-likelihood", T.mean(self.cost_likelihood))
             T.core.summary.scalar("prior-kl", T.mean(self.prior_kl))
             T.core.summary.scalar("beta", self.beta)
             T.core.summary.scalar("elbo", self.elbo)
@@ -138,6 +154,7 @@ class VAE(Model):
                 + self.action_encoder.get_parameters()
                 + self.action_decoder.get_parameters()
             )
+            cost_params = self.cost.get_parameters()
             if len(neural_params) > 0:
                 optimizer = T.core.train.AdamOptimizer(self.learning_rate)
                 gradients, variables = zip(*optimizer.compute_gradients(-train_elbo, var_list=neural_params))
@@ -145,6 +162,10 @@ class VAE(Model):
                 self.neural_op = optimizer.apply_gradients(zip(gradients, variables))
             else:
                 self.neural_op = T.core.no_op()
+            if len(cost_params) > 0:
+                self.cost_op = T.core.train.AdamOptimizer(self.learning_rate).minimize(-self.elbo, var_list=cost_params)
+            else:
+                self.cost_op = T.core.no_op()
             if len(self.kl_grads) > 0:
                 if self.prior.is_dynamics_prior():
                     # opt = lambda x: T.core.train.MomentumOptimizer(x, 0.5)
@@ -156,7 +177,7 @@ class VAE(Model):
                 ])
             else:
                 self.dynamics_op = T.core.no_op()
-            self.train_op = T.core.group(self.neural_op, self.dynamics_op)
+            self.train_op = T.core.group(self.neural_op, self.dynamics_op, self.cost_op)
         self.session = T.interactive_session(graph=self.graph, allow_soft_placement=True, log_device_placement=False)
 
     def make_summaries(self, env):
@@ -179,7 +200,7 @@ class VAE(Model):
         beta = beta_start
         if model_learning_rate is None:
             model_learning_rate = learning_rate
-        O, U = rollouts[0], rollouts[1]
+        O, U, C = rollouts[0], rollouts[1], rollouts[2]
         N = O.shape[0]
         if out_dir is None:
             writer = None
@@ -197,6 +218,7 @@ class VAE(Model):
                     summary, _ = self.session.run([self.summary, self.train_op], {
                         self.O: O[batch_idx],
                         self.U: U[batch_idx],
+                        self.C: C[batch_idx],
                         self.beta: beta,
                         self.num_data: N,
                         self.learning_rate: learning_rate,
@@ -208,6 +230,7 @@ class VAE(Model):
                     self.session.run(self.train_op, {
                         self.O: O[batch_idx],
                         self.U: U[batch_idx],
+                        self.C: C[batch_idx],
                         self.beta: beta,
                         self.num_data: N,
                         self.learning_rate: learning_rate,
@@ -234,12 +257,21 @@ class VAE(Model):
 
     def __setstate__(self, state):
         weights = state.pop('weights')
+        if 'cost_params' not in state:
+            state['cost_params'] = {'cost_type': 'none'}
         self.__dict__.update(state)
         self.initialize()
         self.set_weights(weights)
 
     def get_weights(self):
-        return self.session.run((self.state_encoder.get_parameters(), self.state_decoder.get_parameters(), self.action_encoder.get_parameters(), self.action_decoder.get_parameters(), self.prior.get_parameters()))
+        return self.session.run((
+            self.state_encoder.get_parameters(),
+            self.state_decoder.get_parameters(),
+            self.action_encoder.get_parameters(),
+            self.action_decoder.get_parameters(),
+            self.prior.get_parameters(),
+            self.cost.get_parameters(),
+        ))
 
     def set_weights(self, weights):
         self.session.run([T.core.assign(a, b) for a, b in zip(self.state_encoder.get_parameters(), weights[0])])
@@ -247,6 +279,8 @@ class VAE(Model):
         self.session.run([T.core.assign(a, b) for a, b in zip(self.action_encoder.get_parameters(), weights[2])])
         self.session.run([T.core.assign(a, b) for a, b in zip(self.action_decoder.get_parameters(), weights[3])])
         self.session.run([T.core.assign(a, b) for a, b in zip(self.prior.get_parameters(), weights[4])])
+        if len(weights) > 5:
+            self.session.run([T.core.assign(a, b) for a, b in zip(self.prior.cost_parameters(), weights[5])])
 
     def dump_weights(self, epoch, out_dir):
         if out_dir is not None:
