@@ -85,7 +85,8 @@ def plot_results(path, x_axis='episode_number', y_axis='total_cost',
                                                       aggregateby} | {x_axis})
     groups = data.groupby(list(groupable_columns))
     y_axes = y_axis.split(",")
-    fig, axs = plt.subplots(len(y_axes), figsize=(40, 20), dpi=100)
+    fig, axs = plt.subplots(len(y_axes), figsize=(40, 20), dpi=100, squeeze=False)
+    axs = axs[..., 0]
     plot_groups = list(groupable_columns - {x_axis})
     if len(plot_groups) > 0:
         temp_results = groups[y_axes[0]].describe()[['min', 'max', 'mean', 'std']].reset_index().set_index('episode_number').groupby(
