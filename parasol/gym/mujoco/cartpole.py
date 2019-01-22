@@ -33,7 +33,7 @@ class GymCartpole(mujoco_env.MujocoEnv, utils.EzPickle):
     def step(self, a):
         self.do_simulation(a, self.frame_skip)
         ob = self._get_obs()
-        reward, info = self.reward(ob, a)
+        reward, info = self.reward(self.sim.data.qpos, a)
         done = False
         return ob, reward, done, info
 
