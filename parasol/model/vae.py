@@ -82,7 +82,11 @@ class VAE(Model):
 
             if self.prior.is_dynamics_prior():
                 self.data_strength = T.placeholder(T.floatx(), [])
-                posterior_dynamics, (encodings, actions) = self.prior.posterior_dynamics(self.S_potentials, self.A_potentials, data_strength = self.data_strength)
+                self.max_iter = T.placeholder(T.int32, [])
+                posterior_dynamics, (encodings, actions) = \
+                        self.prior.posterior_dynamics(self.S_potentials, self.A_potentials,
+                                                      data_strength=self.data_strength,
+                                                      max_iter=self.max_iter)
                 self.posterior_dynamics_ = posterior_dynamics, (encodings.expected_value(), actions.expected_value())
 
             if self.prior.is_filtering_prior():
@@ -367,12 +371,13 @@ class VAE(Model):
     def get_prior_parameters(self):
         return self.session.run(self.prior.get_parameters())
 
-    def posterior_dynamics(self, rollouts, data_strength=1.0):
+    def posterior_dynamics(self, rollouts, data_strength=1.0, max_iter=100):
         assert self.prior.is_dynamics_prior()
         return self.session.run(self.posterior_dynamics_, {
             self.O: rollouts[0],
             self.U: rollouts[1],
             self.data_strength: data_strength,
+            self.max_iter: max_iter,
         })
 
     def has_dynamics(self):

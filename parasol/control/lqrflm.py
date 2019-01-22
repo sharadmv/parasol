@@ -14,11 +14,9 @@ class LQRFLM(Controller):
 
     control_type = 'lqrflm'
 
-    def __init__(self, model, env, horizon, kl_step=2.0, init_std=1.0, diag_cost=False,
-                 data_strength = 1.0,
-                 linearize_policy = False,
-                 pd_cost = False,
-                 prior_type='gmm'):
+    def __init__(self, model, env, horizon, kl_step=2.0, init_std=1.0,
+                 diag_cost=False, data_strength=1.0, max_iter=100,
+                 linearize_policy=False, pd_cost=False, prior_type='gmm'):
         self.model = model
         self.horizon = horizon
         self.env = env
@@ -30,6 +28,7 @@ class LQRFLM(Controller):
         self.diag_cost = diag_cost
         self.prior_type = prior_type
         self.data_strength = data_strength
+        self.max_iter = max_iter
         self.pd_cost = pd_cost
         self.linearize_policy = linearize_policy
         self.dynamics_stats = None
@@ -88,7 +87,10 @@ class LQRFLM(Controller):
 
         if self.prior_type == 'model':
             assert self.model.prior.is_dynamics_prior()
-            (posterior_dynamics, self.dynamics_stats), (states, actions) = self.model.posterior_dynamics(rollouts, data_strength=self.data_strength)
+            (posterior_dynamics, self.dynamics_stats), (states, actions) = \
+                    self.model.posterior_dynamics(rollouts,
+                                                  data_strength=self.data_strength,
+                                                  max_iter=self.max_iter)
             self.D, self.d, self.S_D = posterior_dynamics[0], np.zeros((T, ds)), posterior_dynamics[1]
             self.mu_s0 = np.mean(states[:, 0], axis=0)
             self.S_s0 = np.diag(np.maximum(np.var(states[:, 0], axis=0),
