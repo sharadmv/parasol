@@ -75,16 +75,27 @@ def plot_results(path, x_axis='episode_number', y_axis='total_cost',
             continue
         for k, v in params.items():
             param_columns.add(k)
-            results[k] = v
+            try:
+                results[k] = v
+            except:
+                results[k] = str(v)
         data = pd.concat([data, results], sort=False)
     groupable_columns = (set([c for c in data.columns if len(pd.unique(data[c]))
                              > 1]) & param_columns - {'experiment_name',
                                                       aggregateby} | {x_axis})
     groups = data.groupby(list(groupable_columns))
     y_axes = y_axis.split(",")
-    fig, axs = plt.subplots(len(y_axes))
+    fig, axs = plt.subplots(len(y_axes), figsize=(40, 20), dpi=100)
     plot_groups = list(groupable_columns - {x_axis})
-    colors = sns.color_palette("Paired")
+    if len(plot_groups) > 0:
+        temp_results = groups[y_axes[0]].describe()[['min', 'max', 'mean', 'std']].reset_index().set_index('episode_number').groupby(
+                                                plot_groups
+                                            )
+    else:
+        temp_results = groups[y_axes[0]].describe()[['min', 'max', 'mean', 'std']].reset_index().set_index('episode_number')
+
+    print("Results:", len(temp_results))
+    colors = sns.color_palette("husl", len(temp_results))
     for ax, y_axis in zip(axs, y_axes):
         if len(plot_groups) > 0:
             results = groups[y_axis].describe()[['min', 'max', 'mean', 'std']].reset_index().set_index('episode_number').groupby(

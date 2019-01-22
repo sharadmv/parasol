@@ -252,13 +252,15 @@ class VAE(Model):
         state['action_encoder'] = self.action_encoder
         state['action_decoder'] = self.action_decoder
         state['prior_params'] = self.prior_params
+        state['cost_params'] = self.cost_params
         state['weights'] = self.get_weights()
         return state
 
     def __setstate__(self, state):
         weights = state.pop('weights')
         if 'cost_params' not in state:
-            state['cost_params'] = {'cost_type': 'none'}
+            #TODO: temporary, fix this
+            state['cost_params'] = {'cost_type': 'quadratic'}
         self.__dict__.update(state)
         self.initialize()
         self.set_weights(weights)
@@ -280,7 +282,7 @@ class VAE(Model):
         self.session.run([T.core.assign(a, b) for a, b in zip(self.action_decoder.get_parameters(), weights[3])])
         self.session.run([T.core.assign(a, b) for a, b in zip(self.prior.get_parameters(), weights[4])])
         if len(weights) > 5:
-            self.session.run([T.core.assign(a, b) for a, b in zip(self.prior.cost_parameters(), weights[5])])
+            self.session.run([T.core.assign(a, b) for a, b in zip(self.cost.get_parameters(), weights[5])])
 
     def dump_weights(self, epoch, out_dir):
         if out_dir is not None:
