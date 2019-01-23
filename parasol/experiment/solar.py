@@ -29,7 +29,6 @@ class Solar(Experiment):
                  **kwargs):
         super(Solar, self).__init__(experiment_name, **kwargs)
         self.env_params = env
-        self.env = gym.from_config(env)
         self.control_params = control
         self.horizon = horizon
         self.model_path = model
