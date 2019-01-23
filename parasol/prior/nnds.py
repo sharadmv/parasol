@@ -2,6 +2,7 @@ import pickle
 import numpy as np
 from deepx import T, stats, nn
 
+from parasol import util
 from .common import Dynamics
 
 __all__ = ['NNDS']
@@ -17,25 +18,10 @@ class NNDS(Dynamics):
 
     def forward(self, q_Xt, q_At):
         Xt, At = q_Xt.sample()[0], q_At.sample()[0]
-        ds, da = T.shape(Xt)[-1], T.shape(At)[-1]
-        leading_dim = T.shape(Xt)[:-1]
-        Xt = T.reshape(Xt, [-1, ds])
-        At = T.reshape(At, [-1, da])
-        XAt = T.concatenate([Xt, At], -1)
-        p_Xt1 = self.network(XAt)
-        if isinstance(p_Xt1, stats.Gaussian):
-            sigma = T.reshape(p_Xt1.get_parameters('regular')[0], T.concatenate([leading_dim, [ds, ds]]))
-            delta_mu = T.reshape(p_Xt1.get_parameters('regular')[1], T.concatenate([leading_dim, [ds]]))
-            mu = q_Xt.get_parameters('regular')[1] + delta_mu
-            return stats.Gaussian([
-                sigma,
-                mu,
-            ])
-        else:
-            raise Exception()
+        return util.map_network(self.network)(T.concatenate([Xt, At], -1))
 
     def get_dynamics(self):
-        raise NotImplementedError
+        return self.network.get_parameters()
 
     def __getstate__(self):
         state = super(NNDS, self).__getstate__()
@@ -56,23 +42,23 @@ class NNDS(Dynamics):
         # q_Xt - [N, H, ds]
         # q_At - [N, H, da]
         if (q_X, q_A) not in self.cache:
-            q_Xt = stats.Gaussian([
+            q_Xt = q_X.__class__([
                 q_X.get_parameters('regular')[0][:, :-1],
                 q_X.get_parameters('regular')[1][:, :-1],
             ])
-            q_At = stats.Gaussian([
+            q_At = q_A.__class__([
                 q_A.get_parameters('regular')[0][:, :-1],
                 q_A.get_parameters('regular')[1][:, :-1],
             ])
             p_Xt1 = self.forward(q_Xt, q_At)
-            q_Xt1 = stats.Gaussian([
+            q_Xt1 = q_X.__class__([
                 q_X.get_parameters('regular')[0][:, 1:],
                 q_X.get_parameters('regular')[1][:, 1:],
             ])
             rmse = T.sqrt(T.sum(T.square(q_Xt1.get_parameters('regular')[1] - p_Xt1.get_parameters('regular')[1]), axis=-1))
-            model_stdev = T.sqrt(T.core.matrix_diag_part(p_Xt1.get_parameters('regular')[0]))
-            encoding_stdev = T.sqrt(T.core.matrix_diag_part(q_Xt1.get_parameters('regular')[0]))
-            self.cache[(q_X, q_A)] = T.mean(T.sum(stats.kl_divergence(q_Xt1, p_Xt1), axis=-1), axis=0), {'rmse': rmse, 'encoding-stdev': encoding_stdev, 'model-stdev': model_stdev}
+            model_stdev = T.sqrt(p_Xt1.get_parameters('regular')[0])
+            encoding_stdev = T.sqrt(q_Xt1.get_parameters('regular')[0])
+            self.cache[(q_X, q_A)] = T.sum(stats.kl_divergence(q_Xt1, p_Xt1), axis=-1), {'rmse': rmse, 'encoding-stdev': encoding_stdev, 'model-stdev': model_stdev}
         return self.cache[(q_X, q_A)]
 
     def next_state(self, state, action, t):
@@ -82,3 +68,9 @@ class NNDS(Dynamics):
             sigma,
             delta_mu + state,
         ])
+
+    def kl_gradients(self, q_X, q_A, kl, num_data):
+        return T.grad(kl, self.get_parameters())
+
+    def is_filtering_prior(self):
+        return False

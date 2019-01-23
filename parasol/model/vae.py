@@ -78,9 +78,6 @@ class VAE(Model):
             self.S_potentials = util.map_network(self.state_encoder)(self.O)
             self.A_potentials = util.map_network(self.action_encoder)(self.U)
 
-            if self.prior.has_dynamics():
-                self.prior_dynamics_stats = self.prior.sufficient_statistics()
-
             if self.prior.is_dynamics_prior():
                 self.data_strength = T.placeholder(T.floatx(), [])
                 self.max_iter = T.placeholder(T.int32, [])
@@ -91,6 +88,7 @@ class VAE(Model):
                 self.posterior_dynamics_ = posterior_dynamics, (encodings.expected_value(), actions.expected_value())
 
             if self.prior.is_filtering_prior():
+                self.prior_dynamics_stats = self.prior.sufficient_statistics()
                 self.dynamics_stats = (
                     T.placeholder(T.floatx(), [None, self.ds, self.ds]),
                     T.placeholder(T.floatx(), [None, self.ds, self.ds + self.da]),
