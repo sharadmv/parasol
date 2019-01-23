@@ -25,7 +25,6 @@ def find_files(path, name):
     if gfile.IsDirectory(path):
         files = gfile.ListDirectory(path)
         for p in files:
-            print(p)
             if p == name:
                 yield path / p
                 return
@@ -35,7 +34,6 @@ def find_files(path, name):
         for p in gfile.ListDirectory(path.parent):
             if not fnmatch.fnmatch(path.parent / p, path.replace('[', 'asdf').replace(']', 'fdsa').replace('asdf', '[[]').replace('fdsa', '[]]')):
                 continue
-            print(p)
             p = Path(path.parent / p)
             if p == path:
                 continue
