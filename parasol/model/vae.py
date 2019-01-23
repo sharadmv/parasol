@@ -263,6 +263,8 @@ class VAE(Model):
 
     def __setstate__(self, state):
         weights = state.pop('weights')
+        if 'cost_params' not in state:
+            state['cost_params'] = {'cost_type': 'none'}
         self.__dict__.update(state)
         self.initialize()
         self.set_weights(weights)

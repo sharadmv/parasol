@@ -49,7 +49,16 @@ class Experiment(object):
         else:
             assert out_dir[:5] == "s3://", "Must be dumping to s3"
             with gfile.GFile(out_dir / "params.json", 'w') as fp:
-                json.dump(self, fp)
+                fp.write(json.dumps(self))
+            while True:
+                try:
+                    with gfile.GFile(out_dir / "params.json", 'r') as fp:
+                        json.load(fp)
+                    break
+                except:
+                    print("Failed experiment upload...trying again")
+                    with gfile.GFile(out_dir / "params.json", 'w') as fp:
+                        fp.write(json.dumps(self))
             return ec2.run_remote(out_dir / "params.json", **kwargs)
         return self
 

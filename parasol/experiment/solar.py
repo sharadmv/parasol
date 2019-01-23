@@ -50,6 +50,7 @@ class Solar(Experiment):
             gfile.MakeDirs(out_dir / "policy")
         if not gfile.Exists(out_dir / "videos"):
             gfile.MakeDirs(out_dir / "videos")
+        self.env = gym.from_config(self.env_params)
         self.initialize_params()
 
     def initialize_params(self):
