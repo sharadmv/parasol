@@ -17,7 +17,7 @@ completed_requests = set()
 
 gfile = tf.gfile
 
-PEM_FILE = os.path.expanduser("~/.aws/umbrellas.pem")
+PEM_FILE = os.environ.get("PEM_FILE", "~/.ssh/aws.pem")
 
 COMMAND = """
 from parasol.experiment import from_json;
