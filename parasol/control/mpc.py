@@ -55,9 +55,8 @@ class MPC(Controller):
         return np.array(states).transpose([1, 0, 2]), actions
 
     def eval_traj_costs(self, states, actions):
-        costs = np.zeros(states.shape[0])
-        for t in range(states.shape[1]):
-            costs += self.env.cost_fn(states[:, t], actions[:, t])
+        costs = self.model.session.run(self.model.cost.evaluate(states))
+        costs += 0.5 * np.einsum('nta,ab,ntb->nt', actions, self.env.torque_matrix(), actions)
         return costs
 
     def train(self, rollouts, train_step, out_dir=None):

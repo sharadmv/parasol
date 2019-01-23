@@ -4,7 +4,7 @@ from abc import ABCMeta, abstractmethod
 @six.add_metaclass(ABCMeta)
 class CostFunction(object):
 
-    def __init__(self, ds, da):
+    def __init__(self, ds, da, *args, **kwargs):
         self.ds, self.da = ds, da
 
     @abstractmethod

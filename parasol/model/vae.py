@@ -22,6 +22,7 @@ PRIOR_MAP = {
 }
 
 COST_MAP = {
+    'nn': cost.NNCost,
     'quadratic': cost.Quadratic,
     'none': cost.NoCost,
 }
@@ -262,9 +263,6 @@ class VAE(Model):
 
     def __setstate__(self, state):
         weights = state.pop('weights')
-        if 'cost_params' not in state:
-            #TODO: temporary, fix this
-            state['cost_params'] = {'cost_type': 'quadratic'}
         self.__dict__.update(state)
         self.initialize()
         self.set_weights(weights)

@@ -117,6 +117,12 @@ class TrainVAE(Experiment):
             policy = lambda _, __, ___, noise: noise
 
             rollouts = env.rollouts(num_rollouts, self.horizon, policy=policy, noise=noise_function, show_progress=True)
+            rollouts = (
+                rollouts[0],
+                rollouts[1],
+                rollouts[2] - 0.5 * np.einsum('nta,ab,ntb->nt', rollouts[1], env.torque_matrix(), rollouts[1]),
+            )
+
         if self.dump_data and 'load_data' not in self.data_params:
             with gfile.GFile(out_dir / "data" / "rollouts.pkl", 'wb') as fp:
                 pickle.dump(rollouts, fp)
