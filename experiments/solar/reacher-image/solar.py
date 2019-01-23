@@ -6,7 +6,7 @@ experiment = dict(
     env={
         'environment_name': 'Reacher',
         'image': True,
-        'default_goal': [0.1, 0.1],
+        'default_goal': [-0.1, -0.1],
         'random_start': False,
         'random_target': False,
         'pd_cost': True,
@@ -37,5 +37,4 @@ run(
     experiment,
     remote=False,
     num_threads=1,
-    instance_type='m5.4xlarge'
 )
