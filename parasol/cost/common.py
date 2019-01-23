@@ -15,6 +15,10 @@ class CostFunction(object):
     def log_likelihood(self, states, costs):
         pass
 
+    @abstractmethod
+    def evaluate(self, states):
+        pass
+
     def __getstate__(self):
         return {
             'ds': self.ds,

@@ -137,6 +137,8 @@ class VAE(Model):
             self.q_U__sample = self.q_U_.sample()[0]
 
             self.cost_likelihood = self.cost.log_likelihood(self.q_S_sample, self.C)
+            if self.cost.is_cost_function():
+                self.evaluated_cost = self.cost.evaluate(self.S)
             self.log_likelihood = T.sum(self.q_O.log_likelihood(self.O), axis=1)
 
             self.elbo = T.mean(self.log_likelihood + self.cost_likelihood - self.prior_kl)
@@ -360,6 +362,12 @@ class VAE(Model):
                 self.S: s,
             })
         return o.reshape(leading_dim + (-1,))
+
+    def evaluate_cost(self, states):
+        assert self.cost.is_cost_function(), "Model has no cost function"
+        return self.session.run(self.evaluated_cost, {
+            self.S: states
+        })
 
     def get_dynamics(self):
         return self.session.run(self.prior_dynamics)

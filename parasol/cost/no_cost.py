@@ -9,3 +9,9 @@ class NoCost(CostFunction):
 
     def log_likelihood(self, states, costs):
         return T.zeros_like(costs)
+
+    def evaluate(self, states):
+        raise Exception("Cannot evaluate NoCost function")
+
+    def is_cost_function(self):
+        return False

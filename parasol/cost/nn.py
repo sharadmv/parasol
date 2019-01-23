@@ -35,3 +35,6 @@ class NNCost(CostFunction):
 
     def evaluate(self, states):
         return util.map_network(self.network)(states).get_parameters('regular')[1]
+
+    def is_cost_function(self):
+        return True

@@ -27,11 +27,17 @@ class Quadratic(CostFunction):
         return [self.C, self.c]
 
     def log_likelihood(self, states, costs):
-        mean = (
-            0.5 * T.einsum('nia,ab,nib->ni', states, self.C, states)
-            + T.einsum('nia,a->ni', states, self.c)
-        )
+        mean = self.evaluate(states)
         stdev = T.ones_like(mean) * self.stdev
         return stats.GaussianScaleDiag([
             stdev, mean
         ]).log_likelihood(costs)
+
+    def evaluate(self, states):
+        return (
+            0.5 * T.einsum('nia,ab,nib->ni', states, self.C, states)
+            + T.einsum('nia,a->ni', states, self.c)
+        )
+
+    def is_cost_function(self):
+        return True
