@@ -132,15 +132,15 @@ class LQRFLM(Controller):
         if self.pd_cost:
             self.C[:self.ds, :self.ds], self.c[:self.ds] = \
             util.quadratic_regression_pd(states, costs -
-                                         np.einsum('nta,ab,ntb->nt', actions,
-                                                   self.env.torque_matrix(),
-                                                   actions))
+                                         0.5 * np.einsum('nta,ab,ntb->nt', actions,
+                                                         self.env.torque_matrix(),
+                                                         actions))
         else:
             self.C[:self.ds, :self.ds], self.c[:self.ds] = \
             util.quadratic_regression(states, costs -
-                                         0.5 * np.einsum('nta,ab,ntb->nt', actions,
-                                                   self.env.torque_matrix(),
-                                                   actions))
+                                      0.5 * np.einsum('nta,ab,ntb->nt', actions,
+                                                      self.env.torque_matrix(),
+                                                      actions))
         self.C[self.ds:, self.ds:] = self.env.torque_matrix()
         self.c[self.ds:] = np.zeros(self.da)
 
