@@ -3,7 +3,7 @@
 ## Installation
 We use [Pipenv](https://pipenv.readthedocs.io/en/latest/) for dependency management.
 ```bash
-$ pipenv install --ignore-pipfile
+$ pipenv install
 ```
 
 ## Important files
