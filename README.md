@@ -1,7 +1,7 @@
 # Parasol
 
 ## Installation
-We use [https://pipenv.readthedocs.io/en/latest/](Pipenv) for dependency management.
+We use [Pipenv](https://pipenv.readthedocs.io/en/latest/) for dependency management.
 ```bash
 $ pipenv install --ignore-pipfile
 ```
