@@ -105,10 +105,10 @@ def request_instance(instance_type, ami, spot_price, instance_name):
     response = ec2.request_spot_instances(
         AvailabilityZoneGroup='us-west-2',
         LaunchSpecification=dict(
-            SecurityGroups=['rllab-sg'],
+            SecurityGroups=[os.environ.get("SECURITY_GROUP", "group")],
             ImageId=ami,
             InstanceType=instance_type,
-            KeyName='umbrellas',
+            KeyName=os.environ.get("PEM_NAME", "aws"),
         ),
         SpotPrice=str(spot_price)
 
