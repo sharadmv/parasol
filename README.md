@@ -15,3 +15,4 @@ $ pipenv install --ignore-pipfile
 ## Running experiments
 
 - `python experiments/vae/reacher-image/solar.py`
+- `python experiments/solar/reacher-image/solar.py`
