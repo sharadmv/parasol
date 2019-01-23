@@ -25,6 +25,7 @@ def find_files(path, name):
     if gfile.IsDirectory(path):
         files = gfile.ListDirectory(path)
         for p in files:
+            print(p)
             if p == name:
                 yield path / p
                 return
@@ -106,16 +107,19 @@ def plot_results(path, x_axis='episode_number', y_axis='total_cost',
                 data = data[['mean', 'std', 'min', 'max']].rolling(10).mean().dropna(how='all').fillna(0)
                 ax.plot(data.index, data['mean'], label=str(group), color=colors[i],
                         alpha=0.8)
-                ax.fill_between(data.index, data['mean'] - data['std'], data['mean'] + data['std'], color=colors[i], alpha=0.3)
+                # ax.fill_between(data.index, data['mean'] - data['std'], data['mean'] + data['std'], color=colors[i], alpha=0.3)
+                ax.fill_between(data.index, data['min'], data['max'], color=colors[i], alpha=0.3)
         else:
             results = groups[y_axis].describe()[['min', 'max', 'mean', 'std']].reset_index().set_index('episode_number')
             data = results[['mean', 'std', 'min', 'max']].rolling(10).mean().dropna(how='all').fillna(0)
             ax.plot(data.index, data['mean'], color=colors[0],
                     alpha=0.8)
-            ax.fill_between(data.index, data['mean'] - data['std'], data['mean'] + data['std'], color=colors[0], alpha=0.3)
+            # ax.fill_between(data.index, data['mean'] - data['std'], data['mean'] + data['std'], color=colors[0], alpha=0.3)
+            ax.fill_between(data.index, data['min'], data['max'], color=colors[0], alpha=0.3)
         ax.legend(loc='best', title=','.join(plot_groups))
         ax.set_xlabel(x_axis)
         ax.set_ylabel(y_axis)
+    fig.savefig("temp.png")
     plt.show()
 
 

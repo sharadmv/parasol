@@ -121,6 +121,7 @@ class TrainVAE(Experiment):
                 rollouts[0],
                 rollouts[1],
                 rollouts[2] - 0.5 * np.einsum('nta,ab,ntb->nt', rollouts[1], env.torque_matrix(), rollouts[1]),
+                rollouts[3]
             )
 
         if self.dump_data and 'load_data' not in self.data_params:

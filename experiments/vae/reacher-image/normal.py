@@ -4,8 +4,8 @@ import parasol.gym as gym
 
 env_params = {
     "environment_name": "Reacher",
-    "random_start": False,
-    "random_target": False,
+    "random_start": True,
+    "random_target": True,
     "image": True,
     "image_dim": 64,
 }
@@ -16,7 +16,7 @@ du = da = env.get_action_dim()
 horizon = 50
 
 experiment = dict(
-    experiment_name='reacher-image',
+    experiment_name='vae',
     experiment_type='train_vae',
     env=env_params,
     model=dict(
@@ -34,19 +34,16 @@ experiment = dict(
         action_encoder=nn.IdentityVariance(variance=1e-4),
         action_decoder=nn.IdentityVariance(variance=1e-4),
         prior=sweep([
-            dict(prior_type='lds', smooth=True, time_varying=True),
-            dict(prior_type='lds', smooth=False, time_varying=True),
-            # dict(prior_type='blds', smooth=True, time_varying=True),
-            # dict(prior_type='blds', smooth=False, time_varying=True),
-            # dict(prior_type='normal'),
-            # dict(prior_type='none'),
-        ], ['lds-tv-smooth', 'lds-tv'])
-        # prior=dict(prior_type='lds', smooth=True, time_varying=True)
+            dict(prior_type='blds', smooth=True, time_varying=True),
+            dict(prior_type='normal'),
+        ], ['blds-tv-smooth', 'normal']),
+        cost=dict(cost_type='quadratic',
+                  learn_stdev=sweep([False, True])),
     ),
     train=dict(
         num_epochs=1000,
         learning_rate=1e-3,
-        model_learning_rate=1e-3 * horizon,
+        model_learning_rate=2e-5 * horizon,
         beta_start=1e-4,
         beta_end=10.0,
         beta_rate=5e-5,
@@ -62,7 +59,6 @@ experiment = dict(
     ),
     dump_data=True,
     seed=0,
-    out_dir='s3://parasol-experiments/vae/reacher-image-single-target',
-    # out_dir='data/vae/reacher-image/reacher-image-stable',
+    out_dir='s3://parasol-experiments/vae/reacher-image/fit-cost-random-learn',
 )
 run(experiment, remote=True, gpu=False, num_threads=1, instance_type='m5.4xlarge')

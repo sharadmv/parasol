@@ -23,3 +23,7 @@ class CostFunction(object):
 
     def __setstate__(self, state):
         self.__init__(state['ds'], state['da'])
+
+    @abstractmethod
+    def is_cost_function(self):
+        pass

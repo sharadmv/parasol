@@ -1,8 +1,6 @@
 import tensorflow as tf
 import os
-import fabric
 from fabric.connection import Connection
-import fabric.transfer as transfer
 import time
 import socket
 import tempfile
@@ -34,7 +32,7 @@ with T.device(T.gpu()):
     from_json('%s').run()
 """
 
-def run_remote(params_path, gpu=False, instance_type='m5.large', ami='ami-052d1b75d579ff7fb', spot_price=0.5):
+def run_remote(params_path, gpu=False, instance_type='m5.large', ami='ami-00b8b0b2dff90dcab', spot_price=0.5):
     command = COMMAND % params_path
     if gpu:
         ami = 'ami-03fd6608775f924b8'
