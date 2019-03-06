@@ -119,6 +119,9 @@ class Tee(object):
     def __del__(self):
         self.close()
 
+    def read(self):
+        pass
+
     def close(self):
         if self.stream != None:
             self.set_stream(self.stream)

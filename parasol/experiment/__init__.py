@@ -2,19 +2,10 @@ from functools import partial
 import multiprocessing
 import tensorflow as tf
 from parasol.util import json
-from .vae import TrainVAE
-from .solar import Solar
 from .common import Experiment
-
 from .util import sweep
 
 gfile = tf.gfile
-
-EXPERIMENTS = [TrainVAE, Solar]
-
-EXPERIMENT_MAP = {}
-for experiment in EXPERIMENTS:
-    EXPERIMENT_MAP[experiment.experiment_type] = experiment
 
 def from_json(fp):
     if isinstance(fp, str):
@@ -62,5 +53,13 @@ def run(params, **kwargs):
             run_experiment(experiment, **kwargs)
 
 def run_experiment(params, **kwargs):
+    from .vae import TrainVAE
+    from .solar import Solar
+    EXPERIMENTS = [TrainVAE, Solar]
+
+    EXPERIMENT_MAP = {}
+    for experiment in EXPERIMENTS:
+        EXPERIMENT_MAP[experiment.experiment_type] = experiment
+
     experiment = EXPERIMENT_MAP[params['experiment_type']].from_dict(params)
     return experiment.run(**kwargs)
