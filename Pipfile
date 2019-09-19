@@ -24,9 +24,9 @@ kfac = "*"
 fabric = "*"
 "boto3" = "*"
 pandas = "*"
-gps = {git = "https://github.com/anon-submitter/gps.git",editable = true}
+gps = {git = "https://github.com/sharadmv/gps.git",editable = true}
 click = "*"
-deepx = "*"
+deepx = "==0.4.16"
 tensorflow-probability = "*"
 
 [requires]
