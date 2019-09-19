@@ -18,7 +18,7 @@ experiment = dict(
         prior_type='model',
         horizon=50,
         init_std=0.5,
-        kl_step=10,
+        kl_step=2.0,
     ),
     model='data/vae/reacher-image/weights/model-final.pkl',
     horizon=50,
