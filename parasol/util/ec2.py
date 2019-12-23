@@ -17,7 +17,7 @@ completed_requests = set()
 
 gfile = tf.gfile
 
-PEM_FILE = os.path.expanduser("~/.aws/umbrellas.pem")
+PEM_FILE = os.environ.get("PEM_FILE", "~/.ssh/aws.pem")
 
 COMMAND = """
 from parasol.experiment import from_json;
@@ -105,10 +105,10 @@ def request_instance(instance_type, ami, spot_price, instance_name):
     response = ec2.request_spot_instances(
         AvailabilityZoneGroup='us-west-2',
         LaunchSpecification=dict(
-            SecurityGroups=['rllab-sg'],
+            SecurityGroups=[os.environ.get("SECURITY_GROUP", "group")],
             ImageId=ami,
             InstanceType=instance_type,
-            KeyName='umbrellas',
+            KeyName=os.environ.get("PEM_NAME", "aws"),
         ),
         SpotPrice=str(spot_price)
 

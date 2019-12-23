@@ -1,5 +1,5 @@
 from deepx import nn
-from parasol.experiment import run, sweep
+from parasol.experiment import run
 import parasol.gym as gym
 
 env_params = {
@@ -16,7 +16,7 @@ du = da = env.get_action_dim()
 horizon = 50
 
 experiment = dict(
-    experiment_name='vae',
+    experiment_name='reacher-image',
     experiment_type='train_vae',
     env=env_params,
     model=dict(
@@ -33,12 +33,8 @@ experiment = dict(
                     >> nn.Flatten() >> nn.Bernoulli()),
         action_encoder=nn.IdentityVariance(variance=1e-4),
         action_decoder=nn.IdentityVariance(variance=1e-4),
-        prior=sweep([
-            dict(prior_type='blds', smooth=True, time_varying=True),
-            dict(prior_type='normal'),
-        ], ['blds-tv-smooth', 'normal']),
-        cost=dict(cost_type='quadratic',
-                  learn_stdev=sweep([False, True])),
+        prior= dict(prior_type='blds', smooth=True, time_varying=True),
+        cost=dict(cost_type='quadratic')
     ),
     train=dict(
         num_epochs=1000,
@@ -59,6 +55,6 @@ experiment = dict(
     ),
     dump_data=True,
     seed=0,
-    out_dir='s3://parasol-experiments/vae/reacher-image/fit-cost-random-learn',
+    out_dir='data/vae',
 )
-run(experiment, remote=True, gpu=False, num_threads=1, instance_type='m5.4xlarge')
+run(experiment, remote=False)
