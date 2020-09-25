@@ -6,7 +6,7 @@ name = "pypi"
 [dev-packages]
 
 [packages]
-tensorflow = "==1.12"
+tensorflow = "==1.15.4"
 gym = {version = "*",extras = ["box2d", "mujoco"]}
 parasol = {path = ".",editable = true}
 jupyter = "*"
